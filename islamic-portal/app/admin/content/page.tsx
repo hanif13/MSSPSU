@@ -1,0 +1,545 @@
+// ============================================
+// app/admin/content/page.tsx
+// หน้าจัดการเนื้อหา - ลิงก์ไปหน้าเพิ่มเนื้อหา
+// ============================================
+
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
+import { Modal, ConfirmModal } from "@/components/admin/Modal";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import {
+    Plus,
+    Search,
+    Edit,
+    Trash2,
+    Eye,
+    FileText,
+    Video,
+    BookOpen,
+    Heart,
+    Youtube,
+    ExternalLink,
+} from "lucide-react";
+import {
+    contentTypes,
+    statusOptions,
+} from "@/lib/adminStore";
+
+// Content item type
+interface ContentItem {
+    id: string;
+    title: string;
+    type: string;
+    category: string;
+    author: string;
+    status: string;
+    createdAt: string;
+    views: number;
+    content?: string;
+    youtubeUrl?: string;
+}
+
+// Category type with contentType
+interface Category {
+    id: string;
+    name: string;
+    contentType: string;
+}
+
+// หมวดหมู่แยกตามประเภทเนื้อหา
+const allCategories: Category[] = [
+    { id: "1", name: "อากีดะห์", contentType: "article" },
+    { id: "2", name: "ฟิกห์", contentType: "article" },
+    { id: "3", name: "อัคลาก", contentType: "article" },
+    { id: "4", name: "ซีเราะห์", contentType: "article" },
+    { id: "5", name: "ตัฟซีร", contentType: "article" },
+    { id: "6", name: "บรรยายพิเศษ", contentType: "video" },
+    { id: "7", name: "สารคดี", contentType: "video" },
+    { id: "8", name: "อบรม", contentType: "video" },
+    { id: "9", name: "ฉบับที่ 15", contentType: "journal" },
+    { id: "10", name: "ฉบับที่ 14", contentType: "journal" },
+    { id: "11", name: "ฉบับที่ 13", contentType: "journal" },
+    { id: "12", name: "พื้นฐาน", contentType: "salam" },
+    { id: "13", name: "การปฏิบัติ", contentType: "salam" },
+    { id: "14", name: "คำถามที่พบบ่อย", contentType: "salam" },
+];
+
+// Initial mock content
+const initialContent: ContentItem[] = [
+    { id: "1", title: "หลักการศรัทธาในอิสลาม", type: "article", category: "อากีดะห์", author: "อ.ดร. อับดุลเลาะ", status: "published", createdAt: "15 ม.ค. 2567", views: 1250, content: "เนื้อหาบทความ..." },
+    { id: "2", title: "การละหมาดที่สมบูรณ์", type: "video", category: "บรรยายพิเศษ", author: "อ.ซอลิห์", status: "published", createdAt: "10 ม.ค. 2567", views: 2500, youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    { id: "3", title: "จริยธรรมอิสลามในชีวิตประจำวัน", type: "article", category: "อัคลาก", author: "ดร.ไอซะห์", status: "pending", createdAt: "20 ม.ค. 2567", views: 0 },
+    { id: "4", title: "บทบาทมัสยิดในสังคม", type: "journal", category: "ฉบับที่ 15", author: "ทีมวิชาการ", status: "published", createdAt: "5 ม.ค. 2567", views: 890 },
+    { id: "5", title: "อิสลามคืออะไร?", type: "salam", category: "พื้นฐาน", author: "ทีมบรรณาธิการ", status: "published", createdAt: "1 ม.ค. 2567", views: 3200 },
+    { id: "6", title: "ความสำคัญของการถือศีลอด", type: "article", category: "ฟิกห์", author: "อ.มุฮัมมัด", status: "draft", createdAt: "25 ม.ค. 2567", views: 0 },
+];
+
+export default function ContentManagementPage() {
+    const [content, setContent] = useState<ContentItem[]>(initialContent);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [typeFilter, setTypeFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+
+    // Modal states
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
+
+    // Form state for editing
+    const [formData, setFormData] = useState({
+        title: "",
+        type: "article",
+        category: "",
+        author: "",
+        status: "draft",
+        content: "",
+        youtubeUrl: "",
+    });
+
+    // Get categories filtered by content type
+    const filteredCategories = useMemo(() => {
+        return allCategories.filter(cat => cat.contentType === formData.type);
+    }, [formData.type]);
+
+    // Filter content
+    const filteredContent = content.filter((item) => {
+        const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.author.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = typeFilter === "all" || item.type === typeFilter;
+        const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+        return matchesSearch && matchesType && matchesStatus;
+    });
+
+    // Get type icon
+    const getTypeIcon = (type: string) => {
+        switch (type) {
+            case "article": return <FileText size={16} className="text-blue-600" />;
+            case "video": return <Video size={16} className="text-purple-600" />;
+            case "journal": return <BookOpen size={16} className="text-green-600" />;
+            case "salam": return <Heart size={16} className="text-orange-600" />;
+            default: return <FileText size={16} />;
+        }
+    };
+
+    // Get status badge
+    const getStatusBadge = (status: string) => {
+        const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+            draft: { bg: "bg-gray-100", text: "text-gray-600", label: "แบบร่าง" },
+            pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "รออนุมัติ" },
+            published: { bg: "bg-green-100", text: "text-green-700", label: "เผยแพร่แล้ว" },
+            rejected: { bg: "bg-red-100", text: "text-red-700", label: "ถูกปฏิเสธ" },
+        };
+        const config = statusConfig[status] || statusConfig.draft;
+        return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+                {config.label}
+            </span>
+        );
+    };
+
+    // Handle type change
+    const handleTypeChange = (newType: string) => {
+        setFormData({ ...formData, type: newType, category: "" });
+    };
+
+    // Handle Edit
+    const handleEdit = () => {
+        if (!selectedItem) return;
+        setContent(content.map((item) =>
+            item.id === selectedItem.id
+                ? { ...item, title: formData.title, type: formData.type, category: formData.category, author: formData.author, status: formData.status, content: formData.content, youtubeUrl: formData.youtubeUrl }
+                : item
+        ));
+        setIsEditModalOpen(false);
+        setSelectedItem(null);
+    };
+
+    // Handle Delete
+    const handleDelete = () => {
+        if (!selectedItem) return;
+        setContent(content.filter((item) => item.id !== selectedItem.id));
+        setSelectedItem(null);
+    };
+
+    // Open Edit Modal
+    const openEditModal = (item: ContentItem) => {
+        setSelectedItem(item);
+        setFormData({
+            title: item.title,
+            type: item.type,
+            category: item.category,
+            author: item.author,
+            status: item.status,
+            content: item.content || "",
+            youtubeUrl: item.youtubeUrl || "",
+        });
+        setIsEditModalOpen(true);
+    };
+
+    // Get YouTube video ID
+    const getYoutubeVideoId = (url: string) => {
+        const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|\/sandalsResorts#\w\/\w\/.*\/))([^\/&\?]{10,12})/);
+        return match ? match[1] : null;
+    };
+
+    return (
+        <AdminLayoutWrapper
+            title="จัดการเนื้อหา"
+            subtitle="จัดการบทความ วิดีโอ และเนื้อหาทั้งหมด"
+        >
+            {/* Action Bar */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                {/* Search */}
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="ค้นหาเนื้อหา..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                {/* Filters */}
+                <div className="flex gap-3">
+                    <select
+                        value={typeFilter}
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                        className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="all">ประเภททั้งหมด</option>
+                        {contentTypes.map((type) => (
+                            <option key={type.value} value={type.value}>{type.label}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="all">สถานะทั้งหมด</option>
+                        {statusOptions.map((status) => (
+                            <option key={status.value} value={status.value}>{status.label}</option>
+                        ))}
+                    </select>
+
+                    <Link
+                        href="/admin/content/new"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <Plus size={20} />
+                        <span className="hidden sm:inline">เพิ่มเนื้อหา</span>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Content Table */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">ชื่อเนื้อหา</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">ประเภท</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">หมวดหมู่</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">ผู้เขียน</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">สถานะ</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">วันที่สร้าง</th>
+                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">การดู</th>
+                                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {filteredContent.map((item) => (
+                                <tr key={item.id} className="hover:bg-gray-50 transition">
+                                    <td className="px-6 py-4">
+                                        <p className="font-medium text-gray-800 line-clamp-1">{item.title}</p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            {getTypeIcon(item.type)}
+                                            <span className="text-sm text-gray-600">
+                                                {contentTypes.find(t => t.value === item.type)?.label}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">{item.category}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">{item.author}</td>
+                                    <td className="px-6 py-4">{getStatusBadge(item.status)}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{item.createdAt}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">{item.views.toLocaleString()}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedItem(item);
+                                                    setIsViewModalOpen(true);
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                                title="ดูรายละเอียด"
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => openEditModal(item)}
+                                                className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                                                title="แก้ไข"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedItem(item);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                title="ลบ"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {filteredContent.length === 0 && (
+                    <div className="text-center py-12">
+                        <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">ไม่พบเนื้อหาที่ค้นหา</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Edit Modal */}
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="แก้ไขเนื้อหา"
+                size="lg"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อเนื้อหา *</label>
+                        <input
+                            type="text"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท *</label>
+                            <select
+                                value={formData.type}
+                                onChange={(e) => handleTypeChange(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                                {contentTypes.map((type) => (
+                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่ *</label>
+                            <select
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">เลือกหมวดหมู่</option>
+                                {filteredCategories.map((cat) => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ผู้เขียน *</label>
+                            <input
+                                type="text"
+                                value={formData.author}
+                                onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                                {statusOptions.map((status) => (
+                                    <option key={status.value} value={status.value}>{status.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Video: YouTube URL */}
+                    {formData.type === "video" ? (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                <Youtube size={16} className="text-red-600" />
+                                ลิงก์ YouTube *
+                            </label>
+                            <input
+                                type="url"
+                                value={formData.youtubeUrl}
+                                onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="https://www.youtube.com/watch?v=..."
+                            />
+                            {formData.youtubeUrl && getYoutubeVideoId(formData.youtubeUrl) && (
+                                <div className="mt-2 aspect-video rounded-lg overflow-hidden bg-gray-100">
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        src={`https://www.youtube.com/embed/${getYoutubeVideoId(formData.youtubeUrl)}`}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">เนื้อหา</label>
+                            <RichTextEditor
+                                value={formData.content}
+                                onChange={(content) => setFormData({ ...formData, content })}
+                                placeholder="แก้ไขเนื้อหา..."
+                                height={300}
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+                        <button
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                        >
+                            ยกเลิก
+                        </button>
+                        <button
+                            onClick={handleEdit}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                        >
+                            บันทึกการแก้ไข
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* View Modal */}
+            <Modal
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                title="รายละเอียดเนื้อหา"
+                size="lg"
+            >
+                {selectedItem && (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            {getTypeIcon(selectedItem.type)}
+                            <span className="text-sm text-gray-500">
+                                {contentTypes.find(t => t.value === selectedItem.type)?.label}
+                            </span>
+                            {getStatusBadge(selectedItem.status)}
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">{selectedItem.title}</h3>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="text-gray-500">หมวดหมู่:</span>
+                                <span className="ml-2 text-gray-800">{selectedItem.category}</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-500">ผู้เขียน:</span>
+                                <span className="ml-2 text-gray-800">{selectedItem.author}</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-500">วันที่สร้าง:</span>
+                                <span className="ml-2 text-gray-800">{selectedItem.createdAt}</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-500">การเข้าชม:</span>
+                                <span className="ml-2 text-gray-800">{selectedItem.views.toLocaleString()} ครั้ง</span>
+                            </div>
+                        </div>
+
+                        {/* Video Preview */}
+                        {selectedItem.type === "video" && selectedItem.youtubeUrl && (
+                            <div>
+                                <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+                                    <Youtube size={16} className="text-red-600" />
+                                    วิดีโอ YouTube
+                                </p>
+                                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        src={`https://www.youtube.com/embed/${getYoutubeVideoId(selectedItem.youtubeUrl)}`}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                </div>
+                                <a
+                                    href={selectedItem.youtubeUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2"
+                                >
+                                    เปิดใน YouTube <ExternalLink size={14} />
+                                </a>
+                            </div>
+                        )}
+
+                        {/* Content Preview */}
+                        {selectedItem.type !== "video" && selectedItem.content && (
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-500 mb-2">เนื้อหา:</p>
+                                <p className="text-gray-700 whitespace-pre-line">{selectedItem.content}</p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    setIsViewModalOpen(false);
+                                    openEditModal(selectedItem);
+                                }}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                            >
+                                แก้ไข
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                title="ยืนยันการลบ"
+                message={`คุณต้องการลบ "${selectedItem?.title}" หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`}
+                confirmText="ลบ"
+                confirmColor="red"
+            />
+        </AdminLayoutWrapper>
+    );
+}

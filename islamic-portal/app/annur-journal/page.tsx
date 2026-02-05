@@ -1,0 +1,123 @@
+// ============================================
+// app/annur-journal/page.tsx
+// หน้ารายการวารสารทั้งหมด พร้อมรูปปก
+// ============================================
+
+"use client";
+
+import Link from "next/link";
+import { FileText, Calendar } from "lucide-react";
+import { journals } from "@/lib/mockData";
+import { useState, useMemo } from "react";
+
+// Get unique categories (issues) from journals
+const categories = ["ทั้งหมด", ...Array.from(new Set(journals.map(j => j.category)))];
+
+export default function JournalPage() {
+    const [selectedCategory, setSelectedCategory] = useState("ทั้งหมด");
+
+    const filteredJournals = useMemo(() => {
+        if (selectedCategory === "ทั้งหมด") {
+            return journals;
+        }
+        return journals.filter(j => j.category === selectedCategory);
+    }, [selectedCategory]);
+
+    return (
+        <div className="pt-24 pb-16">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-800 py-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center">
+                        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                            วารสารอันนูร
+                        </h1>
+                        <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                            วารสารวิชาการอิสลามศึกษา เผยแพร่บทความวิจัยและบทความทางวิชาการ
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Issue Filter */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex flex-wrap gap-3 justify-center">
+                    {categories.map((category) => (
+                        <button
+                            key={category}
+                            onClick={() => setSelectedCategory(category)}
+                            className={`px-5 py-2.5 rounded-full font-medium transition ${selectedCategory === category
+                                ? "bg-green-600 text-white shadow-lg"
+                                : "bg-white text-gray-600 hover:bg-green-50 hover:text-green-600 border border-gray-200"
+                                }`}
+                        >
+                            {category}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Journals Grid */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredJournals.map((journal) => (
+                        <Link key={journal.id} href={`/annur-journal/${journal.slug}`}>
+                            <article className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 h-full flex flex-col">
+                                {/* Cover Image */}
+                                <div className="h-48 relative overflow-hidden">
+                                    {journal.coverImage ? (
+                                        <img
+                                            src={journal.coverImage}
+                                            alt={journal.title}
+                                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
+                                            <FileText className="w-16 h-16 text-white opacity-50" />
+                                        </div>
+                                    )}
+                                    <span className="absolute top-4 left-4 px-3 py-1 bg-white/90 rounded-full text-xs font-medium text-green-700">
+                                        {journal.category}
+                                    </span>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
+                                        {journal.title}
+                                    </h2>
+                                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-1">
+                                        {journal.excerpt}
+                                    </p>
+
+                                    {/* Issue Info */}
+                                    <div className="bg-green-50 rounded-lg p-3 mb-4">
+                                        <p className="text-sm font-medium text-green-700">{journal.issue}</p>
+                                    </div>
+
+                                    {/* Meta */}
+                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <Calendar size={14} />
+                                            {journal.date}
+                                        </span>
+                                        <span className="text-gray-500">
+                                            {journal.author}
+                                        </span>
+                                    </div>
+                                </div>
+                            </article>
+                        </Link>
+                    ))}
+                </div>
+
+                {/* No Results */}
+                {filteredJournals.length === 0 && (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">ไม่พบวารสารในฉบับนี้</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
