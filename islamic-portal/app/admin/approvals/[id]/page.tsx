@@ -152,7 +152,7 @@ export default function ApprovalReviewPage({ params }: { params: Promise<{ id: s
 
     if (!content) {
         return (
-            <AdminLayoutWrapper title="ไม่พบเนื้อหา">
+            <AdminLayoutWrapper title="ไม่พบเนื้อหา" description="ไม่พบข้อมูลเนื้อหาที่ต้องการตรวจสอบ">
                 <div className="text-center py-12">
                     <p className="text-gray-500 mb-4">ไม่พบเนื้อหาที่ต้องการตรวจสอบ</p>
                     <Link href="/admin/approvals" className="text-blue-600 hover:underline">
@@ -164,7 +164,7 @@ export default function ApprovalReviewPage({ params }: { params: Promise<{ id: s
     }
 
     return (
-        <AdminLayoutWrapper title="ตรวจสอบเนื้อหา">
+        <AdminLayoutWrapper title="ตรวจสอบเนื้อหา" description="ตรวจสอบและพิจารณาอนุมัติหรือปฏิเสธเนื้อหา">
             {/* Back Link */}
             <Link
                 href="/admin/approvals"

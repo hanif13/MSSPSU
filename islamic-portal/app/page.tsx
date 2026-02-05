@@ -1,18 +1,50 @@
 // ============================================
 // app/page.tsx
-// หน้าแรกพร้อมข้อมูลครบถ้วน (รูปปก, ผู้เขียน, วันที่)
+// หน้าแรก - ดึงข้อมูลจาก API จริง
 // ============================================
 
 import { HeroSection } from "@/components/content/HeroSection";
 import { ContentSection } from "@/components/content/ContentSection";
-import { articles, videos, journals, salamArticles } from "@/lib/mockData";
 
-export default function HomePage() {
-  // ใช้ข้อมูลจาก mockData แทน - เพื่อให้มีข้อมูลครบถ้วน (รูปปก, ผู้เขียน, วันที่)
-  const displayArticles = articles.slice(0, 3);
-  const displayVideos = videos.slice(0, 3);
-  const displayJournals = journals.slice(0, 3);
-  const displaySalam = salamArticles.slice(0, 3);
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+// Fetch data from API
+async function getHomePageData() {
+  try {
+    const [articlesRes, videosRes, journalsRes, salamRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/articles/published`, { cache: 'no-store' }),
+      fetch(`${API_BASE_URL}/videos/published`, { cache: 'no-store' }),
+      fetch(`${API_BASE_URL}/journals/published`, { cache: 'no-store' }),
+      fetch(`${API_BASE_URL}/salam-articles/published`, { cache: 'no-store' }),
+    ]);
+
+    const articles = articlesRes.ok ? await articlesRes.json() : [];
+    const videos = videosRes.ok ? await videosRes.json() : [];
+    const journals = journalsRes.ok ? await journalsRes.json() : [];
+    const salamArticles = salamRes.ok ? await salamRes.json() : [];
+
+    return { articles, videos, journals, salamArticles };
+  } catch (error) {
+    console.error('Error fetching homepage data:', error);
+    return { articles: [], videos: [], journals: [], salamArticles: [] };
+  }
+}
+
+// Transform API data to match component interface
+function transformForDisplay(items: any[], limit: number = 3) {
+  return items.slice(0, limit).map((item: any) => ({
+    ...item,
+    id: item._id, // MongoDB uses _id
+  }));
+}
+
+export default async function HomePage() {
+  const { articles, videos, journals, salamArticles } = await getHomePageData();
+
+  const displayArticles = transformForDisplay(articles);
+  const displayVideos = transformForDisplay(videos);
+  const displayJournals = transformForDisplay(journals);
+  const displaySalam = transformForDisplay(salamArticles);
 
   return (
     <>

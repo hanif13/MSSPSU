@@ -57,9 +57,19 @@ export function Footer() {
             <h4 className="font-semibold mb-4">ลิงค์อื่น ๆ</h4>
             <ul className="space-y-2 text-blue-200 text-sm">
               <li>
+                <Link href="https://msspsuhatyai.org/" className="hover:text-white transition">
+                  เว็ปหลักชมรม
+                </Link>
+              </li>
+              <li>
                 <Link href="https://msspsuhatyai.org/activities" className="hover:text-white transition">
                   กิจกรรม
                 </Link>
+              </li>
+              <li>
+                <a href="https://msspsuhatyai.org/prayer-rooms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+                  สถานที่ละหมาด
+                </a>
               </li>
               <li>
                 <a href="https://msspsuhatyai.org/about" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
@@ -67,8 +77,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://msspsuhatyai.org/prayer-rooms" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                  สถานที่ละหมาด
+                <a href="https://msspsuhatyai.org/contact" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+                  ติดต่อเรา
                 </a>
               </li>
             </ul>

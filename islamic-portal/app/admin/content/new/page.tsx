@@ -1,49 +1,25 @@
 // ============================================
 // app/admin/content/new/page.tsx
-// หน้าเพิ่มเนื้อหาใหม่ (พร้อมอัพโหลดรูปปก)
+// หน้าเพิ่มเนื้อหาใหม่ - เชื่อมต่อ API จริง
 // ============================================
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
-import { ArrowLeft, Save, Youtube, FileText, Video, BookOpen, Heart, Upload, X, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, Youtube, FileText, Video, BookOpen, Heart, Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { contentTypes, statusOptions } from "@/lib/adminStore";
 
-// Category type with contentType
-interface Category {
-    id: string;
-    name: string;
-    description: string;
-    contentCount: number;
-    color: string;
-    contentType: string;
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-// หมวดหมู่แยกตามประเภทเนื้อหา
-const allCategories: Category[] = [
-    // บทความ
-    { id: "1", name: "อากีดะห์", description: "หลักความเชื่อ", contentCount: 12, color: "blue", contentType: "article" },
-    { id: "2", name: "ฟิกห์", description: "นิติศาสตร์", contentCount: 8, color: "green", contentType: "article" },
-    { id: "3", name: "อัคลาก", description: "จริยธรรม", contentCount: 15, color: "purple", contentType: "article" },
-    { id: "4", name: "ซีเราะห์", description: "ประวัติศาสตร์", contentCount: 10, color: "orange", contentType: "article" },
-    { id: "5", name: "ตัฟซีร", description: "อรรถาธิบาย", contentCount: 6, color: "pink", contentType: "article" },
-    // วิดีโอ
-    { id: "6", name: "บรรยายพิเศษ", description: "บรรยายพิเศษ", contentCount: 5, color: "purple", contentType: "video" },
-    { id: "7", name: "สารคดี", description: "สารคดี", contentCount: 3, color: "teal", contentType: "video" },
-    { id: "8", name: "อบรม", description: "อบรม", contentCount: 7, color: "blue", contentType: "video" },
-    // วารสาร
-    { id: "9", name: "ฉบับที่ 15", description: "ฉบับที่ 15", contentCount: 4, color: "green", contentType: "journal" },
-    { id: "10", name: "ฉบับที่ 14", description: "ฉบับที่ 14", contentCount: 6, color: "green", contentType: "journal" },
-    { id: "11", name: "ฉบับที่ 13", description: "ฉบับที่ 13", contentCount: 5, color: "green", contentType: "journal" },
-    // สวัสดีอิสลาม
-    { id: "12", name: "พื้นฐาน", description: "พื้นฐาน", contentCount: 8, color: "orange", contentType: "salam" },
-    { id: "13", name: "การปฏิบัติ", description: "การปฏิบัติ", contentCount: 6, color: "orange", contentType: "salam" },
-    { id: "14", name: "คำถามที่พบบ่อย", description: "FAQ", contentCount: 10, color: "yellow", contentType: "salam" },
-];
+interface Category {
+    _id: string;
+    name: string;
+    type: string;
+}
 
 export default function NewContentPage() {
     const router = useRouter();
@@ -61,14 +37,34 @@ export default function NewContentPage() {
         excerpt: "",
     });
 
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
     const [coverImage, setCoverImage] = useState<string | null>(null);
     const [coverImageName, setCoverImageName] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Fetch categories from API
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/categories`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setCategories(data);
+                }
+            } catch (err) {
+                console.error("Error fetching categories:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCategories();
+    }, []);
+
     // Get categories filtered by content type
     const filteredCategories = useMemo(() => {
-        return allCategories.filter(cat => cat.contentType === formData.type);
-    }, [formData.type]);
+        return categories.filter(cat => cat.type === formData.type);
+    }, [formData.type, categories]);
 
     // Handle type change - reset category when type changes
     const handleTypeChange = (newType: string) => {
@@ -97,8 +93,21 @@ export default function NewContentPage() {
         }
     };
 
+    const generateSlug = (text: string) => {
+        return text
+            .toString()
+            .toLowerCase()
+            .replace(/\s+/g, '-')           // Replace spaces with -
+            .replace(/[^\w\u0E00-\u0E7F-]+/g, '') // Remove all non-word chars (support Thai)
+            .replace(/--+/g, '-')           // Replace multiple - with single -
+            .replace(/^-+/, '')             // Trim - from start of text
+            .replace(/-+$/, '')             // Trim - from end of text
+            + '-' + Math.random().toString(36).substring(2, 7);
+    };
+
     // Extract YouTube video ID from URL
     const getYoutubeVideoId = (url: string) => {
+        if (!url) return null;
         const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|\/sandalsResorts#\w\/\w\/.*\/))([^\/&\?]{10,12})/);
         return match ? match[1] : null;
     };
@@ -116,18 +125,70 @@ export default function NewContentPage() {
         }
     };
 
+    // Get recommended cover dimensions based on content type
+    const getCoverDimensions = (type: string) => {
+        switch (type) {
+            case "video":
+                return { width: 1920, height: 1080, ratio: "16:9" };
+            case "article":
+            case "journal":
+            case "salam":
+            default:
+                return { width: 1080, height: 1080, ratio: "1:1" };
+        }
+    };
+
     // Handle Submit
     const handleSubmit = async () => {
         setIsSubmitting(true);
+        try {
+            const slug = generateSlug(formData.title);
+            const endpointMap: Record<string, string> = {
+                article: 'articles',
+                video: 'videos',
+                journal: 'journals',
+                salam: 'salam-articles',
+            };
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
+            const endpoint = endpointMap[formData.type];
 
-        // In real app, save to database here
-        console.log("Saving content:", { ...formData, coverImage });
+            // Prepare payload based on backend schema
+            const payload: any = {
+                title: formData.title,
+                excerpt: formData.excerpt || formData.title,
+                category: formData.category,
+                author: formData.author,
+                slug: slug,
+                status: formData.status,
+                coverImage: coverImage || "", // In real app, this would be an uploaded file URL
+            };
 
-        // Redirect back to content list
-        router.push("/admin/content");
+            if (formData.type === "video") {
+                payload.youtubeUrl = formData.youtubeUrl;
+                payload.duration = formData.duration;
+                payload.description = formData.content;
+            } else {
+                payload.content = formData.content;
+            }
+
+            const res = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (res.ok) {
+                router.push("/admin/content");
+            } else {
+                const data = await res.json();
+                alert(data.message || "เกิดข้อผิดพลาดในการบันทึกเนื้อหา");
+            }
+        } catch (err) {
+            console.error("Error saving content:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const isFormValid = formData.title && formData.category && formData.author &&
@@ -136,7 +197,7 @@ export default function NewContentPage() {
     return (
         <AdminLayoutWrapper
             title="เพิ่มเนื้อหาใหม่"
-            subtitle="สร้างเนื้อหาใหม่สำหรับเผยแพร่"
+            description="สร้างเนื้อหาใหม่สำหรับเผยแพร่"
         >
             {/* Back Link */}
             <Link
@@ -177,7 +238,7 @@ export default function NewContentPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท *</label>
                                     <div className="relative">
@@ -204,12 +265,13 @@ export default function NewContentPage() {
                                     >
                                         <option value="">เลือกหมวดหมู่</option>
                                         {filteredCategories.map((cat) => (
-                                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                            <option key={cat._id} value={cat.name}>{cat.name}</option>
                                         ))}
                                     </select>
-                                    {filteredCategories.length === 0 && (
+                                    {filteredCategories.length === 0 && !loading && (
                                         <p className="text-xs text-amber-600 mt-1">⚠️ ไม่มีหมวดหมู่สำหรับประเภทนี้</p>
                                     )}
+                                    {loading && <p className="text-xs text-blue-500 mt-1 animate-pulse">กำลังโหลดหมวดหมู่...</p>}
                                 </div>
                             </div>
 
@@ -239,7 +301,8 @@ export default function NewContentPage() {
                                     <img
                                         src={coverImage}
                                         alt="Cover preview"
-                                        className="w-full h-64 object-cover rounded-lg"
+                                        className={`w-full object-cover rounded-lg ${formData.type === "video" ? "aspect-video" : "aspect-square"
+                                            }`}
                                     />
                                     <button
                                         onClick={removeCoverImage}
@@ -257,7 +320,10 @@ export default function NewContentPage() {
                                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition">
                                         <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                         <p className="text-gray-600 font-medium mb-1">คลิกเพื่ออัพโหลดรูปปก</p>
-                                        <p className="text-sm text-gray-500">รองรับไฟล์ JPG, PNG, GIF, WebP (ไม่จำกัดขนาด)</p>
+                                        <p className="text-sm text-gray-500">
+                                            แนะนำ: {getCoverDimensions(formData.type).width}×{getCoverDimensions(formData.type).height} px ({getCoverDimensions(formData.type).ratio})
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">รองรับไฟล์ JPG, PNG, GIF, WebP</p>
                                     </div>
                                     <input
                                         ref={fileInputRef}
@@ -363,7 +429,8 @@ export default function NewContentPage() {
                             <img
                                 src={coverImage}
                                 alt="Cover thumbnail"
-                                className="w-full h-40 object-cover rounded-lg"
+                                className={`w-full object-cover rounded-lg ${formData.type === "video" ? "aspect-video" : "aspect-square"
+                                    }`}
                             />
                         </div>
                     )}
@@ -392,7 +459,7 @@ export default function NewContentPage() {
                                     disabled={!isFormValid || isSubmitting}
                                     className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Save size={20} />
+                                    {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                                     {isSubmitting ? "กำลังบันทึก..." : "บันทึกเนื้อหา"}
                                 </button>
                             </div>

@@ -64,7 +64,6 @@ export interface Category {
     name: string;
     description: string;
     contentCount: number;
-    color: string;
 }
 
 export interface User {
@@ -80,11 +79,11 @@ export interface User {
 
 // Initial mock data
 export const initialCategories: Category[] = [
-    { id: "1", name: "อากีดะห์", description: "หลักความเชื่อ", contentCount: 12, color: "blue" },
-    { id: "2", name: "ฟิกห์", description: "นิติศาสตร์อิสลาม", contentCount: 8, color: "green" },
-    { id: "3", name: "อัคลาก", description: "จริยธรรม", contentCount: 15, color: "purple" },
-    { id: "4", name: "ซีเราะห์", description: "ประวัติศาสตร์", contentCount: 10, color: "orange" },
-    { id: "5", name: "ตัฟซีร", description: "อรรถาธิบายอัลกุรอาน", contentCount: 6, color: "pink" },
+    { id: "1", name: "อากีดะห์", description: "หลักความเชื่อ", contentCount: 12 },
+    { id: "2", name: "ฟิกห์", description: "นิติศาสตร์อิสลาม", contentCount: 8 },
+    { id: "3", name: "อัคลาก", description: "จริยธรรม", contentCount: 15 },
+    { id: "4", name: "ซีเราะห์", description: "ประวัติศาสตร์", contentCount: 10 },
+    { id: "5", name: "ตัฟซีร", description: "อรรถาธิบายอัลกุรอาน", contentCount: 6 },
 ];
 
 export const initialUsers: User[] = [

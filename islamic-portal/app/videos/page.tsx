@@ -1,27 +1,75 @@
 // ============================================
 // app/videos/page.tsx
-// หน้ารายการวิดีโอทั้งหมด พร้อมรูปปก
+// หน้ารายการวิดีโอทั้งหมด - ดึงข้อมูลจาก API จริง
 // ============================================
 
 "use client";
 
 import Link from "next/link";
 import { Play, User, Clock, Eye, Calendar } from "lucide-react";
-import { videos } from "@/lib/mockData";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-// Get unique categories from videos
-const categories = ["ทั้งหมด", ...Array.from(new Set(videos.map(v => v.category)))];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+interface Video {
+    _id: string;
+    title: string;
+    excerpt: string;
+    description: string;
+    category: string;
+    author: string;
+    authorTitle?: string;
+    slug: string;
+    duration?: string;
+    views?: string;
+    publishedAt?: string;
+    youtubeUrl?: string;
+    coverImage?: string;
+}
 
 export default function VideosPage() {
+    const [videos, setVideos] = useState<Video[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState("ทั้งหมด");
+
+    useEffect(() => {
+        async function fetchVideos() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/videos/published`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setVideos(data);
+                }
+            } catch (error) {
+                console.error('Error fetching videos:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchVideos();
+    }, []);
+
+    const categories = useMemo(() => {
+        return ["ทั้งหมด", ...Array.from(new Set(videos.map(v => v.category)))];
+    }, [videos]);
 
     const filteredVideos = useMemo(() => {
         if (selectedCategory === "ทั้งหมด") {
             return videos;
         }
         return videos.filter(v => v.category === selectedCategory);
-    }, [selectedCategory]);
+    }, [selectedCategory, videos]);
+
+    if (loading) {
+        return (
+            <div className="pt-24 pb-16 min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">กำลังโหลดวิดีโอ...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="pt-24 pb-16">
@@ -61,9 +109,9 @@ export default function VideosPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredVideos.map((video) => (
-                        <Link key={video.id} href={`/videos/${video.slug}`}>
+                        <Link key={video._id} href={`/videos/${video.slug}`}>
                             <article className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 h-full flex flex-col">
-                                {/* Thumbnail with Cover Image */}
+                                {/* Thumbnail */}
                                 <div className="relative aspect-video overflow-hidden">
                                     {video.coverImage ? (
                                         <img
@@ -74,20 +122,14 @@ export default function VideosPage() {
                                     ) : (
                                         <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-700" />
                                     )}
-
-                                    {/* Play Button Overlay */}
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
                                         <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
                                             <Play className="w-7 h-7 text-purple-600 ml-1" fill="currentColor" />
                                         </div>
                                     </div>
-
-                                    {/* Duration Badge */}
                                     <span className="absolute bottom-3 right-3 px-2 py-1 bg-black/80 rounded text-xs text-white font-medium">
                                         {video.duration}
                                     </span>
-
-                                    {/* Category Badge */}
                                     <span className="absolute top-3 left-3 px-3 py-1 bg-white/90 rounded-full text-xs font-medium text-purple-700">
                                         {video.category}
                                     </span>
@@ -136,7 +178,6 @@ export default function VideosPage() {
                     ))}
                 </div>
 
-                {/* No Results */}
                 {filteredVideos.length === 0 && (
                     <div className="text-center py-12">
                         <p className="text-gray-500">ไม่พบวิดีโอในหมวดหมู่นี้</p>

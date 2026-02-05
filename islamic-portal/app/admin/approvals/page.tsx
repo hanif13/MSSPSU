@@ -1,11 +1,6 @@
-// ============================================
-// app/admin/approvals/page.tsx
-// หน้าอนุมัติ/ปฏิเสธเนื้อหา - พร้อมฟังก์ชันครบ
-// ============================================
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { Modal, ConfirmModal } from "@/components/admin/Modal";
@@ -19,80 +14,79 @@ import {
     BookOpen,
     Heart,
     User,
+    Loader2,
 } from "lucide-react";
 
+const API_BASE_URL = "http://localhost:3001/api";
+
 interface PendingItem {
-    id: string;
+    _id: string;
     title: string;
     type: string;
     category: string;
     author: string;
-    authorEmail: string;
+    authorEmail?: string;
     submittedAt: string;
     excerpt: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "published" | "rejected";
 }
 
-const initialPendingItems: PendingItem[] = [
-    {
-        id: "1",
-        title: "จริยธรรมอิสลามในชีวิตประจำวัน",
-        type: "article",
-        category: "อัคลาก",
-        author: "ดร.ไอซะห์ นูรี",
-        authorEmail: "aisah@islamic.edu",
-        submittedAt: "20 ม.ค. 2567, 14:30",
-        excerpt: "บทความเกี่ยวกับการนำหลักจริยธรรมอิสลามมาประยุกต์ใช้ในชีวิตประจำวัน...",
-        status: "pending",
-    },
-    {
-        id: "2",
-        title: "การถือศีลอด: หลักการและประโยชน์",
-        type: "article",
-        category: "ฟิกห์",
-        author: "อ.มุฮัมมัด อาลี",
-        authorEmail: "muhammad@islamic.edu",
-        submittedAt: "19 ม.ค. 2567, 09:15",
-        excerpt: "บทความอธิบายหลักการถือศีลอดในเดือนรอมฎอนและประโยชน์ต่อร่างกายและจิตใจ...",
-        status: "pending",
-    },
-    {
-        id: "3",
-        title: "ประวัติศาสตร์อิสลามในเอเชียตะวันออกเฉียงใต้",
-        type: "video",
-        category: "ซีเราะห์",
-        author: "อ.อิสมาอีล",
-        authorEmail: "ismail@islamic.edu",
-        submittedAt: "18 ม.ค. 2567, 16:45",
-        excerpt: "วิดีโอสารคดีเกี่ยวกับการเข้ามาของอิสลามในภูมิภาคเอเชียตะวันออกเฉียงใต้...",
-        status: "pending",
-    },
-    {
-        id: "4",
-        title: "การดูแลครอบครัวในอิสลาม",
-        type: "salam",
-        category: "การปฏิบัติ",
-        author: "ทีมบรรณาธิการ",
-        authorEmail: "editor@islamic.edu",
-        submittedAt: "17 ม.ค. 2567, 11:20",
-        excerpt: "บทความสำหรับผู้เริ่มต้นเกี่ยวกับบทบาทของครอบครัวในอิสลาม...",
-        status: "pending",
-    },
-];
+const endpointMap: Record<string, string> = {
+    article: "articles",
+    video: "videos",
+    journal: "journals",
+    salam: "salam-articles",
+};
 
 export default function ApprovalsPage() {
-    const [items, setItems] = useState<PendingItem[]>(initialPendingItems);
-    const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [items, setItems] = useState<PendingItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<"all" | "pending" | "published" | "rejected">("pending");
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
     const [rejectReason, setRejectReason] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
-    const filteredItems = items.filter((item) => {
-        if (filter === "all") return true;
-        return item.status === filter;
-    });
+    useEffect(() => {
+        fetchAllPending();
+    }, []);
+
+    const fetchAllPending = async () => {
+        setLoading(true);
+        try {
+            const types = ['article', 'video', 'journal', 'salam'];
+            const allResults = await Promise.all(
+                types.map(async (type) => {
+                    const endpoint = endpointMap[type];
+                    const res = await fetch(`${API_BASE_URL}/${endpoint}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        return data.map((item: any) => ({
+                            ...item,
+                            type,
+                            submittedAt: item.createdAt,
+                        }));
+                    }
+                    return [];
+                })
+            );
+
+            const combined = allResults.flat().sort((a, b) =>
+                new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+            );
+            setItems(combined);
+        } catch (err) {
+            console.error("Error fetching pending items:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredItems = useMemo(() => {
+        if (filter === "all") return items;
+        return items.filter((item) => item.status === (filter === "published" ? "published" : filter));
+    }, [items, filter]);
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -117,7 +111,7 @@ export default function ApprovalsPage() {
     const getStatusBadge = (status: string) => {
         const config: Record<string, { bg: string; text: string; label: string; icon: React.ReactNode }> = {
             pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "รออนุมัติ", icon: <Clock size={14} /> },
-            approved: { bg: "bg-green-100", text: "text-green-700", label: "อนุมัติแล้ว", icon: <CheckCircle size={14} /> },
+            published: { bg: "bg-green-100", text: "text-green-700", label: "อนุมัติแล้ว", icon: <CheckCircle size={14} /> },
             rejected: { bg: "bg-red-100", text: "text-red-700", label: "ปฏิเสธแล้ว", icon: <XCircle size={14} /> },
         };
         const c = config[status] || config.pending;
@@ -129,65 +123,78 @@ export default function ApprovalsPage() {
         );
     };
 
-    const handleApprove = () => {
+    const handleAction = async (status: "published" | "rejected") => {
         if (!selectedItem) return;
-        setItems(items.map((item) =>
-            item.id === selectedItem.id ? { ...item, status: "approved" as const } : item
-        ));
-        setIsApproveModalOpen(false);
-        setSelectedItem(null);
+        setSubmitting(true);
+        try {
+            const endpoint = endpointMap[selectedItem.type];
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/${selectedItem._id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+
+            if (res.ok) {
+                setItems(items.map(item =>
+                    item._id === selectedItem._id ? { ...item, status } : item
+                ));
+                setIsApproveModalOpen(false);
+                setIsRejectModalOpen(false);
+                setSelectedItem(null);
+                setRejectReason("");
+            }
+        } catch (err) {
+            console.error(`Error updating status to ${status}:`, err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    const handleReject = () => {
-        if (!selectedItem) return;
-        setItems(items.map((item) =>
-            item.id === selectedItem.id ? { ...item, status: "rejected" as const } : item
-        ));
-        setIsRejectModalOpen(false);
-        setSelectedItem(null);
-        setRejectReason("");
-    };
-
-    const pendingCount = items.filter(i => i.status === "pending").length;
-    const approvedCount = items.filter(i => i.status === "approved").length;
-    const rejectedCount = items.filter(i => i.status === "rejected").length;
+    const stats = useMemo(() => {
+        return {
+            total: items.length,
+            pending: items.filter(i => i.status === "pending").length,
+            published: items.filter(i => i.status === "published").length,
+            rejected: items.filter(i => i.status === "rejected").length,
+        };
+    }, [items]);
 
     return (
         <AdminLayoutWrapper
             title="อนุมัติ/ปฏิเสธเนื้อหา"
-            subtitle="ตรวจสอบและอนุมัติเนื้อหาที่รอการพิจารณา"
+            description="ตรวจสอบและอนุมัติเนื้อหาที่รอการพิจารณา"
         >
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-xl p-5 shadow-sm">
                     <p className="text-sm text-gray-500 mb-1">ทั้งหมด</p>
-                    <p className="text-2xl font-bold text-gray-800">{items.length}</p>
+                    <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
                 </div>
                 <div className="bg-yellow-50 rounded-xl p-5 shadow-sm border border-yellow-100">
                     <p className="text-sm text-yellow-600 mb-1">รออนุมัติ</p>
-                    <p className="text-2xl font-bold text-yellow-700">{pendingCount}</p>
+                    <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
                 </div>
                 <div className="bg-green-50 rounded-xl p-5 shadow-sm border border-green-100">
                     <p className="text-sm text-green-600 mb-1">อนุมัติแล้ว</p>
-                    <p className="text-2xl font-bold text-green-700">{approvedCount}</p>
+                    <p className="text-2xl font-bold text-green-700">{stats.published}</p>
                 </div>
                 <div className="bg-red-50 rounded-xl p-5 shadow-sm border border-red-100">
                     <p className="text-sm text-red-600 mb-1">ปฏิเสธแล้ว</p>
-                    <p className="text-2xl font-bold text-red-700">{rejectedCount}</p>
+                    <p className="text-2xl font-bold text-red-700">{stats.rejected}</p>
                 </div>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-6">
                 {[
-                    { value: "pending", label: "รออนุมัติ", count: pendingCount },
-                    { value: "approved", label: "อนุมัติแล้ว", count: approvedCount },
-                    { value: "rejected", label: "ปฏิเสธแล้ว", count: rejectedCount },
-                    { value: "all", label: "ทั้งหมด", count: items.length },
+                    { value: "pending", label: "รออนุมัติ", count: stats.pending },
+                    { value: "published", label: "อนุมัติแล้ว", count: stats.published },
+                    { value: "rejected", label: "ปฏิเสธแล้ว", count: stats.rejected },
+                    { value: "all", label: "ทั้งหมด", count: stats.total },
                 ].map((tab) => (
                     <button
                         key={tab.value}
-                        onClick={() => setFilter(tab.value as typeof filter)}
+                        onClick={() => setFilter(tab.value as any)}
                         className={`px-4 py-2 rounded-lg font-medium transition ${filter === tab.value
                             ? "bg-blue-600 text-white"
                             : "bg-white text-gray-600 hover:bg-gray-50"
@@ -200,9 +207,14 @@ export default function ApprovalsPage() {
 
             {/* Items List */}
             <div className="space-y-4">
-                {filteredItems.map((item) => (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm">
+                        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                        <p className="text-gray-500">กำลังโหลดข้อมูล...</p>
+                    </div>
+                ) : filteredItems.map((item) => (
                     <div
-                        key={item.id}
+                        key={item._id}
                         className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition"
                     >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -225,20 +237,18 @@ export default function ApprovalsPage() {
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Clock size={14} />
-                                        <span>{item.submittedAt}</span>
+                                        <span>{new Date(item.submittedAt).toLocaleDateString("th-TH", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex gap-2">
-                                <Link
-                                    href={`/admin/approvals/${item.id}`}
-                                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-                                >
-                                    <Eye size={18} />
-                                    ดูรายละเอียด
-                                </Link>
-
                                 {item.status === "pending" && (
                                     <>
                                         <button
@@ -263,12 +273,19 @@ export default function ApprovalsPage() {
                                         </button>
                                     </>
                                 )}
+                                <Link
+                                    href={`/admin/content`}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                                >
+                                    <Eye size={18} />
+                                    ดูรายละเอียด
+                                </Link>
                             </div>
                         </div>
                     </div>
                 ))}
 
-                {filteredItems.length === 0 && (
+                {!loading && filteredItems.length === 0 && (
                     <div className="text-center py-12 bg-white rounded-xl shadow-sm">
                         <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500">ไม่มีเนื้อหาในหมวดนี้</p>
@@ -276,78 +293,14 @@ export default function ApprovalsPage() {
                 )}
             </div>
 
-            {/* View Modal */}
-            <Modal
-                isOpen={isViewModalOpen}
-                onClose={() => setIsViewModalOpen(false)}
-                title="รายละเอียดเนื้อหา"
-                size="lg"
-            >
-                {selectedItem && (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            {getTypeIcon(selectedItem.type)}
-                            <span className="text-sm text-gray-500">{getTypeLabel(selectedItem.type)}</span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-sm text-gray-500">{selectedItem.category}</span>
-                            {getStatusBadge(selectedItem.status)}
-                        </div>
-
-                        <h3 className="text-xl font-bold text-gray-800">{selectedItem.title}</h3>
-
-                        <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-gray-600">{selectedItem.excerpt}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <span className="text-gray-500">ผู้ส่ง:</span>
-                                <span className="ml-2 text-gray-800">{selectedItem.author}</span>
-                            </div>
-                            <div>
-                                <span className="text-gray-500">อีเมล:</span>
-                                <span className="ml-2 text-gray-800">{selectedItem.authorEmail}</span>
-                            </div>
-                            <div>
-                                <span className="text-gray-500">วันที่ส่ง:</span>
-                                <span className="ml-2 text-gray-800">{selectedItem.submittedAt}</span>
-                            </div>
-                        </div>
-
-                        {selectedItem.status === "pending" && (
-                            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                                <button
-                                    onClick={() => {
-                                        setIsViewModalOpen(false);
-                                        setIsRejectModalOpen(true);
-                                    }}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                                >
-                                    ปฏิเสธ
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setIsViewModalOpen(false);
-                                        setIsApproveModalOpen(true);
-                                    }}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                                >
-                                    อนุมัติ
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </Modal>
-
             {/* Approve Confirmation */}
             <ConfirmModal
                 isOpen={isApproveModalOpen}
                 onClose={() => setIsApproveModalOpen(false)}
-                onConfirm={handleApprove}
+                onConfirm={() => handleAction("published")}
                 title="ยืนยันการอนุมัติ"
                 message={`คุณต้องการอนุมัติ "${selectedItem?.title}" หรือไม่? เนื้อหานี้จะถูกเผยแพร่สู่สาธารณะ`}
-                confirmText="อนุมัติ"
+                confirmText={submitting ? "กำลังดำเนินการ..." : "อนุมัติ"}
                 confirmColor="green"
             />
 
@@ -377,14 +330,16 @@ export default function ApprovalsPage() {
                         <button
                             onClick={() => setIsRejectModalOpen(false)}
                             className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                            disabled={submitting}
                         >
                             ยกเลิก
                         </button>
                         <button
-                            onClick={handleReject}
+                            onClick={() => handleAction("rejected")}
                             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                            disabled={submitting}
                         >
-                            ปฏิเสธ
+                            {submitting ? "กำลังดำเนินการ..." : "ปฏิเสธ"}
                         </button>
                     </div>
                 </div>

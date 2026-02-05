@@ -1,11 +1,11 @@
 // ============================================
 // app/admin/content/page.tsx
-// หน้าจัดการเนื้อหา - ลิงก์ไปหน้าเพิ่มเนื้อหา
+// หน้าจัดการเนื้อหา - เชื่อมต่อ API จริง
 // ============================================
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { Modal, ConfirmModal } from "@/components/admin/Modal";
@@ -22,15 +22,18 @@ import {
     Heart,
     Youtube,
     ExternalLink,
+    Loader2,
 } from "lucide-react";
 import {
     contentTypes,
     statusOptions,
 } from "@/lib/adminStore";
 
-// Content item type
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+// Content item type matched with backend
 interface ContentItem {
-    id: string;
+    _id: string;
     title: string;
     type: string;
     category: string;
@@ -42,43 +45,18 @@ interface ContentItem {
     youtubeUrl?: string;
 }
 
-// Category type with contentType
 interface Category {
-    id: string;
+    _id: string;
     name: string;
-    contentType: string;
+    type: string;
 }
 
-// หมวดหมู่แยกตามประเภทเนื้อหา
-const allCategories: Category[] = [
-    { id: "1", name: "อากีดะห์", contentType: "article" },
-    { id: "2", name: "ฟิกห์", contentType: "article" },
-    { id: "3", name: "อัคลาก", contentType: "article" },
-    { id: "4", name: "ซีเราะห์", contentType: "article" },
-    { id: "5", name: "ตัฟซีร", contentType: "article" },
-    { id: "6", name: "บรรยายพิเศษ", contentType: "video" },
-    { id: "7", name: "สารคดี", contentType: "video" },
-    { id: "8", name: "อบรม", contentType: "video" },
-    { id: "9", name: "ฉบับที่ 15", contentType: "journal" },
-    { id: "10", name: "ฉบับที่ 14", contentType: "journal" },
-    { id: "11", name: "ฉบับที่ 13", contentType: "journal" },
-    { id: "12", name: "พื้นฐาน", contentType: "salam" },
-    { id: "13", name: "การปฏิบัติ", contentType: "salam" },
-    { id: "14", name: "คำถามที่พบบ่อย", contentType: "salam" },
-];
-
-// Initial mock content
-const initialContent: ContentItem[] = [
-    { id: "1", title: "หลักการศรัทธาในอิสลาม", type: "article", category: "อากีดะห์", author: "อ.ดร. อับดุลเลาะ", status: "published", createdAt: "15 ม.ค. 2567", views: 1250, content: "เนื้อหาบทความ..." },
-    { id: "2", title: "การละหมาดที่สมบูรณ์", type: "video", category: "บรรยายพิเศษ", author: "อ.ซอลิห์", status: "published", createdAt: "10 ม.ค. 2567", views: 2500, youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-    { id: "3", title: "จริยธรรมอิสลามในชีวิตประจำวัน", type: "article", category: "อัคลาก", author: "ดร.ไอซะห์", status: "pending", createdAt: "20 ม.ค. 2567", views: 0 },
-    { id: "4", title: "บทบาทมัสยิดในสังคม", type: "journal", category: "ฉบับที่ 15", author: "ทีมวิชาการ", status: "published", createdAt: "5 ม.ค. 2567", views: 890 },
-    { id: "5", title: "อิสลามคืออะไร?", type: "salam", category: "พื้นฐาน", author: "ทีมบรรณาธิการ", status: "published", createdAt: "1 ม.ค. 2567", views: 3200 },
-    { id: "6", title: "ความสำคัญของการถือศีลอด", type: "article", category: "ฟิกห์", author: "อ.มุฮัมมัด", status: "draft", createdAt: "25 ม.ค. 2567", views: 0 },
-];
-
 export default function ContentManagementPage() {
-    const [content, setContent] = useState<ContentItem[]>(initialContent);
+    const [content, setContent] = useState<ContentItem[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
     const [searchQuery, setSearchQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -88,6 +66,7 @@ export default function ContentManagementPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form state for editing
     const [formData, setFormData] = useState({
@@ -100,12 +79,58 @@ export default function ContentManagementPage() {
         youtubeUrl: "",
     });
 
-    // Get categories filtered by content type
-    const filteredCategories = useMemo(() => {
-        return allCategories.filter(cat => cat.contentType === formData.type);
-    }, [formData.type]);
+    // Fetch all content types
+    const fetchAllData = async () => {
+        try {
+            setLoading(true);
+            const [articlesRes, videosRes, journalsRes, salamRes, categoriesRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/articles`),
+                fetch(`${API_BASE_URL}/videos`),
+                fetch(`${API_BASE_URL}/journals`),
+                fetch(`${API_BASE_URL}/salam-articles`),
+                fetch(`${API_BASE_URL}/categories`),
+            ]);
 
-    // Filter content
+            const [articles, videos, journals, salam, cats] = await Promise.all([
+                articlesRes.ok ? articlesRes.json() : [],
+                videosRes.ok ? videosRes.json() : [],
+                journalsRes.ok ? journalsRes.json() : [],
+                salamRes.ok ? salamRes.json() : [],
+                categoriesRes.ok ? categoriesRes.json() : [],
+            ]);
+
+            // Add type property to each item for identification
+            const unifiedContent: ContentItem[] = [
+                ...articles.map((item: any) => ({ ...item, type: 'article' })),
+                ...videos.map((item: any) => ({ ...item, type: 'video', views: parseInt(item.views) || 0 })),
+                ...journals.map((item: any) => ({ ...item, type: 'journal', views: 0 })),
+                ...salam.map((item: any) => ({ ...item, type: 'salam', views: 0 })),
+            ];
+
+            // Sort by createdAt descending
+            unifiedContent.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            setContent(unifiedContent);
+            setCategories(cats);
+            setError("");
+        } catch (err) {
+            console.error("Error fetching content:", err);
+            setError("ไม่สามารถโหลดข้อมูลเนื้อหาได้");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchAllData();
+    }, []);
+
+    // Get categories filtered by content type
+    const filteredCategoriesForModal = useMemo(() => {
+        return categories.filter(cat => cat.type === formData.type);
+    }, [formData.type, categories]);
+
+    // Filter content for display
     const filteredContent = content.filter((item) => {
         const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.author.toLowerCase().includes(searchQuery.toLowerCase());
@@ -141,28 +166,99 @@ export default function ContentManagementPage() {
         );
     };
 
-    // Handle type change
-    const handleTypeChange = (newType: string) => {
-        setFormData({ ...formData, type: newType, category: "" });
+    const formatDate = (dateString: string) => {
+        if (!dateString) return "-";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
     };
 
     // Handle Edit
-    const handleEdit = () => {
+    const handleEdit = async () => {
         if (!selectedItem) return;
-        setContent(content.map((item) =>
-            item.id === selectedItem.id
-                ? { ...item, title: formData.title, type: formData.type, category: formData.category, author: formData.author, status: formData.status, content: formData.content, youtubeUrl: formData.youtubeUrl }
-                : item
-        ));
-        setIsEditModalOpen(false);
-        setSelectedItem(null);
+        try {
+            setIsSubmitting(true);
+            const endpointMap: Record<string, string> = {
+                article: 'articles',
+                video: 'videos',
+                journal: 'journals',
+                salam: 'salam-articles',
+            };
+
+            const endpoint = endpointMap[selectedItem.type];
+
+            // Build type-specific payload
+            const payload: any = {
+                title: formData.title,
+                category: formData.category,
+                author: formData.author,
+                status: formData.status,
+            };
+
+            if (selectedItem.type === 'video') {
+                payload.description = formData.content; // Videos use 'description' instead of 'content'
+                payload.youtubeUrl = formData.youtubeUrl;
+            } else {
+                payload.content = formData.content;
+                // No youtubeUrl for non-video types
+            }
+
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/${selectedItem._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (res.ok) {
+                await fetchAllData();
+                setIsEditModalOpen(false);
+                setSelectedItem(null);
+            } else {
+                const errorData = await res.json();
+                console.error("Update failed:", errorData);
+                alert(`เกิดข้อผิดพลาดในการแก้ไขเนื้อหา: ${errorData.message || res.statusText}`);
+            }
+        } catch (err) {
+            console.error("Error editing content:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Handle Delete
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedItem) return;
-        setContent(content.filter((item) => item.id !== selectedItem.id));
-        setSelectedItem(null);
+        try {
+            setIsSubmitting(true);
+            const endpointMap: Record<string, string> = {
+                article: 'articles',
+                video: 'videos',
+                journal: 'journals',
+                salam: 'salam-articles',
+            };
+
+            const endpoint = endpointMap[selectedItem.type];
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/${selectedItem._id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                await fetchAllData();
+                setIsDeleteModalOpen(false);
+                setSelectedItem(null);
+            } else {
+                alert("เกิดข้อผิดพลาดในการลบเนื้อหา");
+            }
+        } catch (err) {
+            console.error("Error deleting content:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Open Edit Modal
@@ -182,14 +278,38 @@ export default function ContentManagementPage() {
 
     // Get YouTube video ID
     const getYoutubeVideoId = (url: string) => {
+        if (!url) return null;
         const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|\/sandalsResorts#\w\/\w\/.*\/))([^\/&\?]{10,12})/);
         return match ? match[1] : null;
     };
 
+    if (loading) {
+        return (
+            <AdminLayoutWrapper title="จัดการเนื้อหา" description="กำลังโหลด...">
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+            </AdminLayoutWrapper>
+        );
+    }
+
+    if (error) {
+        return (
+            <AdminLayoutWrapper title="จัดการเนื้อหา" description="เกิดข้อผิดพลาด">
+                <div className="text-center py-20">
+                    <p className="text-red-500 mb-4">{error}</p>
+                    <button onClick={fetchAllData} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        ลองใหม่
+                    </button>
+                </div>
+            </AdminLayoutWrapper>
+        );
+    }
+
     return (
         <AdminLayoutWrapper
             title="จัดการเนื้อหา"
-            subtitle="จัดการบทความ วิดีโอ และเนื้อหาทั้งหมด"
+            description="ดูแลและจัดการเนื้อหาทั้งหมดในระบบ (บทความ, วิดีโอ, วารสาร, สวัสดีอิสลาม)"
         >
             {/* Action Bar */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -198,7 +318,7 @@ export default function ContentManagementPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                         type="text"
-                        placeholder="ค้นหาเนื้อหา..."
+                        placeholder="ค้นหาตามชื่อเรื่องหรือผู้เขียน..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -206,7 +326,7 @@ export default function ContentManagementPage() {
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value)}
@@ -257,7 +377,7 @@ export default function ContentManagementPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredContent.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50 transition">
+                                <tr key={`${item.type}-${item._id}`} className="hover:bg-gray-50 transition">
                                     <td className="px-6 py-4">
                                         <p className="font-medium text-gray-800 line-clamp-1">{item.title}</p>
                                     </td>
@@ -272,10 +392,10 @@ export default function ContentManagementPage() {
                                     <td className="px-6 py-4 text-sm text-gray-600">{item.category}</td>
                                     <td className="px-6 py-4 text-sm text-gray-600">{item.author}</td>
                                     <td className="px-6 py-4">{getStatusBadge(item.status)}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{item.createdAt}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">{item.views.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{formatDate(item.createdAt)}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">{item.views?.toLocaleString() || 0}</td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-2">
+                                        <div className="flex items-center justify-center gap-1">
                                             <button
                                                 onClick={() => {
                                                     setSelectedItem(item);
@@ -323,7 +443,7 @@ export default function ContentManagementPage() {
             <Modal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
-                title="แก้ไขเนื้อหา"
+                title={`แก้ไข ${contentTypes.find(t => t.value === formData.type)?.label}`}
                 size="lg"
             >
                 <div className="space-y-4">
@@ -337,18 +457,13 @@ export default function ContentManagementPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท *</label>
-                            <select
-                                value={formData.type}
-                                onChange={(e) => handleTypeChange(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                {contentTypes.map((type) => (
-                                    <option key={type.value} value={type.value}>{type.label}</option>
-                                ))}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
+                            <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 flex items-center gap-2">
+                                {getTypeIcon(formData.type)}
+                                {contentTypes.find(t => t.value === formData.type)?.label}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่ *</label>
@@ -358,14 +473,14 @@ export default function ContentManagementPage() {
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">เลือกหมวดหมู่</option>
-                                {filteredCategories.map((cat) => (
-                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                {filteredCategoriesForModal.map((cat) => (
+                                    <option key={cat._id} value={cat.name}>{cat.name}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">ผู้เขียน *</label>
                             <input
@@ -436,8 +551,10 @@ export default function ContentManagementPage() {
                         </button>
                         <button
                             onClick={handleEdit}
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                            disabled={isSubmitting}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-2"
                         >
+                            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                             บันทึกการแก้ไข
                         </button>
                     </div>
@@ -472,11 +589,11 @@ export default function ContentManagementPage() {
                             </div>
                             <div>
                                 <span className="text-gray-500">วันที่สร้าง:</span>
-                                <span className="ml-2 text-gray-800">{selectedItem.createdAt}</span>
+                                <span className="ml-2 text-gray-800">{formatDate(selectedItem.createdAt)}</span>
                             </div>
                             <div>
                                 <span className="text-gray-500">การเข้าชม:</span>
-                                <span className="ml-2 text-gray-800">{selectedItem.views.toLocaleString()} ครั้ง</span>
+                                <span className="ml-2 text-gray-800">{selectedItem.views?.toLocaleString() || 0} ครั้ง</span>
                             </div>
                         </div>
 
@@ -511,7 +628,10 @@ export default function ContentManagementPage() {
                         {selectedItem.type !== "video" && selectedItem.content && (
                             <div className="bg-gray-50 rounded-lg p-4">
                                 <p className="text-sm text-gray-500 mb-2">เนื้อหา:</p>
-                                <p className="text-gray-700 whitespace-pre-line">{selectedItem.content}</p>
+                                <div
+                                    className="text-gray-700 prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: selectedItem.content }}
+                                />
                             </div>
                         )}
 
@@ -537,7 +657,7 @@ export default function ContentManagementPage() {
                 onConfirm={handleDelete}
                 title="ยืนยันการลบ"
                 message={`คุณต้องการลบ "${selectedItem?.title}" หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`}
-                confirmText="ลบ"
+                confirmText={isSubmitting ? "กำลังลบ..." : "ลบ"}
                 confirmColor="red"
             />
         </AdminLayoutWrapper>

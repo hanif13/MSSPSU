@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -41,8 +41,21 @@ interface AdminLayoutWrapperProps {
 
 export function AdminLayoutWrapper({ children, title, description, icon }: AdminLayoutWrapperProps) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [userInfo, setUserInfo] = useState({ name: "Admin", role: "Administrator" });
     const pathname = usePathname();
     const router = useRouter();
+
+    useEffect(() => {
+        const name = localStorage.getItem("userName");
+        const role = localStorage.getItem("userRole");
+
+        if (name) {
+            setUserInfo({
+                name: name,
+                role: role === "admin" ? "ผู้ดูแลระบบ" : role === "editor" ? "บรรณาธิการ" : "ผู้ใช้งาน"
+            });
+        }
+    }, []);
 
     const handleLogout = () => {
         // Clear login state
@@ -101,12 +114,12 @@ export function AdminLayoutWrapper({ children, title, description, icon }: Admin
                 <div className="p-4 border-t border-slate-700">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                            H
+                            {userInfo.name.charAt(0).toUpperCase()}
                         </div>
                         {!sidebarCollapsed && (
                             <div className="overflow-hidden">
-                                <p className="font-medium text-sm truncate">Hanif Tuanmiden</p>
-                                <p className="text-xs text-slate-400">Admin</p>
+                                <p className="font-medium text-sm truncate">{userInfo.name}</p>
+                                <p className="text-xs text-slate-400">{userInfo.role}</p>
                             </div>
                         )}
                     </div>

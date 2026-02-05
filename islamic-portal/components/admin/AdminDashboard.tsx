@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +15,10 @@ import {
     ChevronLeft,
     ChevronRight,
     BookOpen,
+    Loader2,
 } from "lucide-react";
+
+const API_BASE_URL = "http://localhost:3001/api";
 
 interface NavItem {
     icon: React.ReactNode;
@@ -37,15 +40,20 @@ interface StatCardProps {
     value: string | number;
     icon: React.ReactNode;
     color: string;
+    loading?: boolean;
 }
 
-function StatCard({ title, value, icon, color }: StatCardProps) {
+function StatCard({ title, value, icon, color, loading }: StatCardProps) {
     return (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-gray-500 text-sm mb-1">{title}</p>
-                    <p className="text-3xl font-bold text-gray-800">{value}</p>
+                    {loading ? (
+                        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                    ) : (
+                        <p className="text-3xl font-bold text-gray-800">{value}</p>
+                    )}
                 </div>
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
                     {icon}
@@ -58,7 +66,26 @@ function StatCard({ title, value, icon, color }: StatCardProps) {
 export function AdminDashboard() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [activeItem, setActiveItem] = useState("/admin");
+    const [loading, setLoading] = useState(true);
+    const [statsData, setStatsData] = useState<any>(null);
     const router = useRouter();
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/stats/dashboard`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setStatsData(data);
+                }
+            } catch (err) {
+                console.error("Error fetching stats:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem("isLoggedIn");
@@ -67,10 +94,30 @@ export function AdminDashboard() {
     };
 
     const stats = [
-        { title: "บทความทั้งหมด", value: 156, icon: <FileText className="text-white" size={24} />, color: "bg-blue-500" },
-        { title: "วิดีโอทั้งหมด", value: 89, icon: <Activity className="text-white" size={24} />, color: "bg-green-500" },
-        { title: "รอการอนุมัติ", value: 12, icon: <CheckCircle className="text-white" size={24} />, color: "bg-orange-500" },
-        { title: "ผู้ใช้งาน", value: 1248, icon: <Users className="text-white" size={24} />, color: "bg-purple-500" },
+        {
+            title: "บทความทั้งหมด",
+            value: statsData?.counts?.articles ?? 0,
+            icon: <FileText className="text-white" size={24} />,
+            color: "bg-blue-500"
+        },
+        {
+            title: "เนื้อหาทั้งหมด",
+            value: statsData?.totalContent ?? 0,
+            icon: <Activity className="text-white" size={24} />,
+            color: "bg-green-500"
+        },
+        {
+            title: "รอการอนุมัติ",
+            value: statsData?.pending?.total ?? 0,
+            icon: <CheckCircle className="text-white" size={24} />,
+            color: "bg-orange-500"
+        },
+        {
+            title: "ผู้ใช้งาน",
+            value: statsData?.counts?.users ?? 0,
+            icon: <Users className="text-white" size={24} />,
+            color: "bg-purple-500"
+        },
     ];
 
     return (
@@ -164,7 +211,7 @@ export function AdminDashboard() {
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         {stats.map((stat, index) => (
-                            <StatCard key={index} {...stat} />
+                            <StatCard key={index} {...stat} loading={loading} />
                         ))}
                     </div>
 
@@ -193,7 +240,11 @@ export function AdminDashboard() {
                                 </div>
                                 <div>
                                     <p className="font-semibold text-gray-800">ตรวจสอบเนื้อหา</p>
-                                    <p className="text-sm text-gray-500">12 รายการรอดำเนินการ</p>
+                                    {loading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                                    ) : (
+                                        <p className="text-sm text-gray-500">{statsData?.pending?.total ?? 0} รายการรอดำเนินการ</p>
+                                    )}
                                 </div>
                             </Link>
                             <Link

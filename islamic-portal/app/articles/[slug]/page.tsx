@@ -1,29 +1,66 @@
 // ============================================
 // app/articles/[slug]/page.tsx
-// หน้ารายละเอียดบทความ พร้อมรูปปก
+// หน้ารายละเอียดบทความ - ดึงข้อมูลจาก API จริง
 // ============================================
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User, Clock, Eye, Calendar, Share2 } from "lucide-react";
-import { getArticleBySlug, articles } from "@/lib/mockData";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+interface Article {
+    _id: string;
+    title: string;
+    excerpt: string;
+    content: string;
+    category: string;
+    author: string;
+    authorTitle?: string;
+    slug: string;
+    publishedAt?: string;
+    readTime?: string;
+    views: number;
+    coverImage?: string;
+}
 
 interface ArticlePageProps {
     params: Promise<{ slug: string }>;
 }
 
+async function getArticle(slug: string): Promise<Article | null> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/articles/slug/${slug}`, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return res.json();
+    } catch (error) {
+        console.error('Error fetching article:', error);
+        return null;
+    }
+}
+
+async function getRelatedArticles(category: string, currentId: string): Promise<Article[]> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/articles/published`, { cache: 'no-store' });
+        if (!res.ok) return [];
+        const articles = await res.json();
+        return articles
+            .filter((a: Article) => a.category === category && a._id !== currentId)
+            .slice(0, 2);
+    } catch (error) {
+        return [];
+    }
+}
+
 export default async function ArticlePage({ params }: ArticlePageProps) {
     const { slug } = await params;
-    const article = getArticleBySlug(slug);
+    const article = await getArticle(slug);
 
     if (!article) {
         notFound();
     }
 
-    // Get related articles (same category, exclude current)
-    const relatedArticles = articles
-        .filter(a => a.category === article.category && a.id !== article.id)
-        .slice(0, 2);
+    const relatedArticles = await getRelatedArticles(article.category, article._id);
 
     return (
         <div className="pt-24 pb-16">
@@ -38,7 +75,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                         กลับไปหน้าบทความ
                     </Link>
 
-                    {/* Category Badge & Date - First Line (like Journal) */}
+                    {/* Category Badge & Date */}
                     <div className="flex flex-wrap items-center gap-4 mb-4">
                         <span className="inline-block px-4 py-1.5 bg-white/20 rounded-full text-sm font-medium text-white">
                             {article.category}
@@ -72,7 +109,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                             </span>
                             <span className="flex items-center gap-1">
                                 <Eye size={16} />
-                                {article.views.toLocaleString()} ครั้ง
+                                {article.views?.toLocaleString() || 0} ครั้ง
                             </span>
                         </div>
                     </div>
@@ -86,7 +123,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                         <img
                             src={article.coverImage}
                             alt={article.title}
-                            className="w-full h-64 md:h-80 object-cover"
+                            className="w-full aspect-square object-cover"
                         />
                     </div>
                 </div>
@@ -95,7 +132,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             {/* Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12">
-                    {/* Share Button Only */}
+                    {/* Share Button */}
                     <div className="flex gap-3 mb-8">
                         <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-gray-600 hover:bg-gray-200 transition">
                             <Share2 size={18} />
@@ -115,13 +152,13 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">บทความที่เกี่ยวข้อง</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {relatedArticles.map((related) => (
-                                <Link key={related.id} href={`/articles/${related.slug}`}>
+                                <Link key={related._id} href={`/articles/${related.slug}`}>
                                     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-100">
                                         {related.coverImage && (
                                             <img
                                                 src={related.coverImage}
                                                 alt={related.title}
-                                                className="w-full h-40 object-cover"
+                                                className="w-full aspect-square object-cover"
                                             />
                                         )}
                                         <div className="p-6">

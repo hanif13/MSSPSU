@@ -1,36 +1,36 @@
 // ============================================
 // app/admin/users/page.tsx
-// หน้าจัดการผู้ใช้ - พร้อม CRUD ครบ
+// หน้าจัดการผู้ใช้ - เชื่อมต่อ API จริง
 // ============================================
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { Modal, ConfirmModal } from "@/components/admin/Modal";
-import { Plus, Edit, Trash2, User as UserIcon, Search, Shield, CheckCircle, XCircle } from "lucide-react";
-import { generateId, roleOptions, formatDate } from "@/lib/adminStore";
+import { Plus, Edit, Trash2, User as UserIcon, Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface User {
-    id: string;
+    _id: string;
     name: string;
     email: string;
     role: string;
-    status: "active" | "inactive";
+    isActive: boolean;
     createdAt: string;
-    lastLogin: string;
+    updatedAt: string;
 }
 
-const initialUsers: User[] = [
-    { id: "1", name: "อ.ดร. อับดุลเลาะ สะอะดี", email: "abdullah@islamic.edu", role: "admin", status: "active", createdAt: "1 ม.ค. 2567", lastLogin: "วันนี้" },
-    { id: "2", name: "อ.ซอลิห์ มะห์มูด", email: "solih@islamic.edu", role: "editor", status: "active", createdAt: "15 ม.ค. 2567", lastLogin: "เมื่อวาน" },
-    { id: "3", name: "นางสาว ฟาติมะห์ ยูซุฟ", email: "fatimah@islamic.edu", role: "author", status: "active", createdAt: "1 ก.พ. 2567", lastLogin: "3 วันที่แล้ว" },
-    { id: "4", name: "นาย อิบรอฮีม อาลี", email: "ibrahim@islamic.edu", role: "viewer", status: "inactive", createdAt: "10 ก.พ. 2567", lastLogin: "1 สัปดาห์ที่แล้ว" },
-    { id: "5", name: "ดร. ยูซุฟ อัลมุสลิม", email: "yusuf@islamic.edu", role: "editor", status: "active", createdAt: "20 ก.พ. 2567", lastLogin: "2 วันที่แล้ว" },
+const roleOptions = [
+    { value: "admin", label: "ผู้ดูแลระบบ" },
+    { value: "editor", label: "บรรณาธิการ" },
 ];
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<User[]>(initialUsers);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -39,20 +39,46 @@ export default function UsersPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        role: "viewer",
-        status: "active" as "active" | "inactive",
+        role: "user",
+        isActive: true,
         password: "",
     });
+
+    // Fetch users from API
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_BASE_URL}/users`);
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data);
+            } else {
+                setError("ไม่สามารถโหลดข้อมูลผู้ใช้ได้");
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredUsers = users.filter((user) => {
         const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.email.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesRole = roleFilter === "all" || user.role === roleFilter;
-        const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+        const matchesStatus = statusFilter === "all" ||
+            (statusFilter === "active" && user.isActive) ||
+            (statusFilter === "inactive" && !user.isActive);
         return matchesSearch && matchesRole && matchesStatus;
     });
 
@@ -60,10 +86,9 @@ export default function UsersPage() {
         const roleConfig: Record<string, { bg: string; text: string; label: string }> = {
             admin: { bg: "bg-red-100", text: "text-red-700", label: "ผู้ดูแลระบบ" },
             editor: { bg: "bg-blue-100", text: "text-blue-700", label: "บรรณาธิการ" },
-            author: { bg: "bg-green-100", text: "text-green-700", label: "ผู้เขียน" },
-            viewer: { bg: "bg-gray-100", text: "text-gray-700", label: "ผู้อ่าน" },
+            user: { bg: "bg-gray-100", text: "text-gray-700", label: "ผู้ใช้ทั่วไป" },
         };
-        const config = roleConfig[role] || roleConfig.viewer;
+        const config = roleConfig[role] || roleConfig.user;
         return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
                 {config.label}
@@ -71,45 +96,116 @@ export default function UsersPage() {
         );
     };
 
-    const handleAdd = () => {
-        const newUser: User = {
-            id: generateId(),
-            name: formData.name,
-            email: formData.email,
-            role: formData.role,
-            status: formData.status,
-            createdAt: formatDate(new Date()),
-            lastLogin: "-",
-        };
-        setUsers([newUser, ...users]);
-        setIsAddModalOpen(false);
-        resetForm();
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
     };
 
-    const handleEdit = () => {
+    const handleAdd = async () => {
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`${API_BASE_URL}/users/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
+                    role: formData.role,
+                }),
+            });
+
+            if (res.ok) {
+                await fetchUsers();
+                setIsAddModalOpen(false);
+                resetForm();
+            } else {
+                const data = await res.json();
+                alert(data.message || "เกิดข้อผิดพลาดในการเพิ่มผู้ใช้");
+            }
+        } catch (err) {
+            console.error("Error adding user:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleEdit = async () => {
         if (!selectedUser) return;
-        setUsers(users.map((user) =>
-            user.id === selectedUser.id
-                ? { ...user, name: formData.name, email: formData.email, role: formData.role, status: formData.status }
-                : user
-        ));
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
-        resetForm();
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`${API_BASE_URL}/users/${selectedUser._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    role: formData.role,
+                    isActive: formData.isActive,
+                }),
+            });
+
+            if (res.ok) {
+                await fetchUsers();
+                setIsEditModalOpen(false);
+                setSelectedUser(null);
+                resetForm();
+            } else {
+                const data = await res.json();
+                alert(data.message || "เกิดข้อผิดพลาดในการแก้ไขผู้ใช้");
+            }
+        } catch (err) {
+            console.error("Error editing user:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedUser) return;
-        setUsers(users.filter((user) => user.id !== selectedUser.id));
-        setSelectedUser(null);
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`${API_BASE_URL}/users/${selectedUser._id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                await fetchUsers();
+                setIsDeleteModalOpen(false);
+                setSelectedUser(null);
+            } else {
+                alert("เกิดข้อผิดพลาดในการลบผู้ใช้");
+            }
+        } catch (err) {
+            console.error("Error deleting user:", err);
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const toggleStatus = (user: User) => {
-        setUsers(users.map((u) =>
-            u.id === user.id
-                ? { ...u, status: u.status === "active" ? "inactive" : "active" }
-                : u
-        ));
+    const toggleStatus = async (user: User) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/users/${user._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    isActive: !user.isActive,
+                }),
+            });
+
+            if (res.ok) {
+                await fetchUsers();
+            }
+        } catch (err) {
+            console.error("Error toggling status:", err);
+        }
     };
 
     const openEditModal = (user: User) => {
@@ -118,23 +214,46 @@ export default function UsersPage() {
             name: user.name,
             email: user.email,
             role: user.role,
-            status: user.status,
+            isActive: user.isActive,
             password: "",
         });
         setIsEditModalOpen(true);
     };
 
     const resetForm = () => {
-        setFormData({ name: "", email: "", role: "viewer", status: "active", password: "" });
+        setFormData({ name: "", email: "", role: "user", isActive: true, password: "" });
     };
 
-    const activeCount = users.filter(u => u.status === "active").length;
+    const activeCount = users.filter(u => u.isActive).length;
     const adminCount = users.filter(u => u.role === "admin").length;
+
+    if (loading) {
+        return (
+            <AdminLayoutWrapper title="จัดการผู้ใช้" description="กำลังโหลด...">
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+            </AdminLayoutWrapper>
+        );
+    }
+
+    if (error) {
+        return (
+            <AdminLayoutWrapper title="จัดการผู้ใช้" description="เกิดข้อผิดพลาด">
+                <div className="text-center py-20">
+                    <p className="text-red-500 mb-4">{error}</p>
+                    <button onClick={fetchUsers} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        ลองใหม่
+                    </button>
+                </div>
+            </AdminLayoutWrapper>
+        );
+    }
 
     return (
         <AdminLayoutWrapper
             title="จัดการผู้ใช้"
-            subtitle="จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง"
+            description="จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง"
         >
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -207,13 +326,12 @@ export default function UsersPage() {
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">บทบาท</th>
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">สถานะ</th>
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">วันที่สร้าง</th>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">เข้าสู่ระบบล่าสุด</th>
                                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredUsers.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50 transition">
+                                <tr key={user._id} className="hover:bg-gray-50 transition">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
@@ -229,12 +347,12 @@ export default function UsersPage() {
                                     <td className="px-6 py-4">
                                         <button
                                             onClick={() => toggleStatus(user)}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${user.status === "active"
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${user.isActive
+                                                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                                 }`}
                                         >
-                                            {user.status === "active" ? (
+                                            {user.isActive ? (
                                                 <>
                                                     <CheckCircle size={14} />
                                                     ใช้งานอยู่
@@ -247,8 +365,7 @@ export default function UsersPage() {
                                             )}
                                         </button>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{user.createdAt}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{user.lastLogin}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{formatDate(user.createdAt)}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center gap-2">
                                             <button
@@ -324,30 +441,17 @@ export default function UsersPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">บทบาท *</label>
-                            <select
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                {roleOptions.map((role) => (
-                                    <option key={role.value} value={role.value}>{role.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
-                            <select
-                                value={formData.status}
-                                onChange={(e) => setFormData({ ...formData, status: e.target.value as "active" | "inactive" })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="active">ใช้งานอยู่</option>
-                                <option value="inactive">ไม่ใช้งาน</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">บทบาท *</label>
+                        <select
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                            {roleOptions.map((role) => (
+                                <option key={role.value} value={role.value}>{role.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
@@ -359,9 +463,10 @@ export default function UsersPage() {
                         </button>
                         <button
                             onClick={handleAdd}
-                            disabled={!formData.name || !formData.email || !formData.password}
-                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                            disabled={!formData.name || !formData.email || !formData.password || isSubmitting}
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                         >
+                            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                             เพิ่มผู้ใช้
                         </button>
                     </div>
@@ -411,8 +516,8 @@ export default function UsersPage() {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
                             <select
-                                value={formData.status}
-                                onChange={(e) => setFormData({ ...formData, status: e.target.value as "active" | "inactive" })}
+                                value={formData.isActive ? "active" : "inactive"}
+                                onChange={(e) => setFormData({ ...formData, isActive: e.target.value === "active" })}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="active">ใช้งานอยู่</option>
@@ -430,8 +535,10 @@ export default function UsersPage() {
                         </button>
                         <button
                             onClick={handleEdit}
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                            disabled={isSubmitting}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-2"
                         >
+                            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                             บันทึก
                         </button>
                     </div>

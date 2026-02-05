@@ -1,27 +1,62 @@
 // ============================================
 // app/salam-islam/[slug]/page.tsx
-// หน้ารายละเอียดบทความสวัสดีอิสลาม พร้อมรูปปก
+// หน้ารายละเอียดบทความสวัสดีอิสลาม - ดึงข้อมูลจาก API จริง
 // ============================================
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User, Calendar, Share2, ArrowRight } from "lucide-react";
-import { getSalamBySlug, salamArticles } from "@/lib/mockData";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+interface SalamArticle {
+    _id: string;
+    title: string;
+    excerpt: string;
+    content: string;
+    category: string;
+    author: string;
+    slug: string;
+    icon?: string;
+    publishedAt?: string;
+    coverImage?: string;
+}
 
 interface SalamPageProps {
     params: Promise<{ slug: string }>;
 }
 
+async function getSalamArticle(slug: string): Promise<SalamArticle | null> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/salam-articles/slug/${slug}`, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return res.json();
+    } catch (error) {
+        console.error('Error fetching salam article:', error);
+        return null;
+    }
+}
+
+async function getOtherArticles(currentId: string): Promise<SalamArticle[]> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/salam-articles/published`, { cache: 'no-store' });
+        if (!res.ok) return [];
+        const articles = await res.json();
+        return articles.filter((a: SalamArticle) => a._id !== currentId);
+    } catch (error) {
+        return [];
+    }
+}
+
 export default async function SalamDetailPage({ params }: SalamPageProps) {
     const { slug } = await params;
-    const article = getSalamBySlug(slug);
+    const article = await getSalamArticle(slug);
 
     if (!article) {
         notFound();
     }
 
-    // Get other articles
-    const otherArticles = salamArticles.filter(a => a.id !== article.id);
+    const otherArticles = await getOtherArticles(article._id);
 
     return (
         <div className="pt-24 pb-16">
@@ -67,7 +102,7 @@ export default async function SalamDetailPage({ params }: SalamPageProps) {
                         <img
                             src={article.coverImage}
                             alt={article.title}
-                            className="w-full h-64 md:h-80 object-cover"
+                            className="w-full aspect-square object-cover"
                         />
                     </div>
                 </div>
@@ -76,7 +111,6 @@ export default async function SalamDetailPage({ params }: SalamPageProps) {
             {/* Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12">
-                    {/* Share Button Only */}
                     <div className="flex gap-3 mb-8">
                         <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-gray-600 hover:bg-gray-200 transition">
                             <Share2 size={18} />
@@ -84,45 +118,46 @@ export default async function SalamDetailPage({ params }: SalamPageProps) {
                         </button>
                     </div>
 
-                    {/* Article Content */}
                     <article className="prose prose-lg max-w-none prose-headings:font-bold prose-headings:text-gray-800 prose-p:text-gray-600 prose-strong:text-gray-800">
                         <div dangerouslySetInnerHTML={{ __html: formatContent(article.content) }} />
                     </article>
                 </div>
 
                 {/* More to Learn */}
-                <div className="mt-12">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6">เรียนรู้เพิ่มเติม</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {otherArticles.map((other) => (
-                            <Link key={other.id} href={`/salam-islam/${other.slug}`}>
-                                <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-100">
-                                    {other.coverImage && (
-                                        <div className="relative">
-                                            <img
-                                                src={other.coverImage}
-                                                alt={other.title}
-                                                className="w-full h-40 object-cover"
-                                            />
-                                            <div className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow">
-                                                <span className="text-xl">{other.icon}</span>
+                {otherArticles.length > 0 && (
+                    <div className="mt-12">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-6">เรียนรู้เพิ่มเติม</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {otherArticles.map((other) => (
+                                <Link key={other._id} href={`/salam-islam/${other.slug}`}>
+                                    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-100">
+                                        {other.coverImage && (
+                                            <div className="relative">
+                                                <img
+                                                    src={other.coverImage}
+                                                    alt={other.title}
+                                                    className="w-full aspect-square object-cover"
+                                                />
+                                                <div className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow">
+                                                    <span className="text-xl">{other.icon}</span>
+                                                </div>
                                             </div>
+                                        )}
+                                        <div className="p-6">
+                                            <span className="text-xs text-orange-600 font-medium">{other.category}</span>
+                                            <h3 className="text-lg font-semibold text-gray-800 mb-1">{other.title}</h3>
+                                            <p className="text-gray-600 text-sm line-clamp-2">{other.excerpt}</p>
+                                            <span className="text-orange-600 text-sm font-medium inline-flex items-center gap-1 mt-2">
+                                                อ่านเพิ่มเติม
+                                                <ArrowRight size={14} />
+                                            </span>
                                         </div>
-                                    )}
-                                    <div className="p-6">
-                                        <span className="text-xs text-orange-600 font-medium">{other.category}</span>
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-1">{other.title}</h3>
-                                        <p className="text-gray-600 text-sm line-clamp-2">{other.excerpt}</p>
-                                        <span className="text-orange-600 text-sm font-medium inline-flex items-center gap-1 mt-2">
-                                            อ่านเพิ่มเติม
-                                            <ArrowRight size={14} />
-                                        </span>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Help Section */}
                 <div className="mt-12 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-8 text-center">

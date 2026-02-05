@@ -1,6 +1,6 @@
 // ============================================
 // app/login/page.tsx
-// หน้าล็อกอินสำหรับผู้ดูแลระบบ
+// หน้าล็อกอิน - เชื่อมต่อ API จริง
 // ============================================
 
 "use client";
@@ -9,6 +9,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -26,19 +28,39 @@ export default function LoginPage() {
         setIsLoading(true);
         setError("");
 
-        // Mock login - ในระบบจริงจะเชื่อมต่อ API
-        setTimeout(() => {
-            // Demo: ใช้ email ใดก็ได้ที่มี @islamic.edu เพื่อเข้าสู่ระบบ
-            if (formData.email.includes("@islamic.edu") && formData.password.length >= 4) {
-                // Simulate successful login
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.token) {
+                // Save token and user info
+                localStorage.setItem("token", data.token);
                 localStorage.setItem("isLoggedIn", "true");
-                localStorage.setItem("userEmail", formData.email);
+                localStorage.setItem("userEmail", data.user.email);
+                localStorage.setItem("userName", data.user.name);
+                localStorage.setItem("userRole", data.user.role);
+
+                // Redirect to admin
                 router.push("/admin");
             } else {
-                setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง");
+                setError(data.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง");
             }
+        } catch (err) {
+            console.error('Login error:', err);
+            setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
+        } finally {
             setIsLoading(false);
-        }, 1000);
+        }
     };
 
     return (
@@ -88,7 +110,7 @@ export default function LoginPage() {
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="your@islamic.edu"
+                                    placeholder="admin@islamicportal.com"
                                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                     required
                                 />
@@ -161,12 +183,12 @@ export default function LoginPage() {
 
                     {/* Demo Note */}
                     <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <p className="text-sm text-blue-700 font-medium mb-2">Demo Mode:</p>
-                        <p className="text-xs text-blue-600">
-                            ใช้อีเมลที่ลงท้ายด้วย @islamic.edu และรหัสผ่านอย่างน้อย 4 ตัวอักษรเพื่อเข้าสู่ระบบ
+                        <p className="text-sm text-blue-700 font-medium mb-2">ข้อมูลสำหรับทดสอบ:</p>
+                        <p className="text-xs text-blue-600 mb-1">
+                            <strong>Admin:</strong> admin@islamicportal.com / admin123
                         </p>
-                        <p className="text-xs text-blue-500 mt-2">
-                            เช่น: admin@islamic.edu / 1234
+                        <p className="text-xs text-blue-600">
+                            <strong>Editor:</strong> editor@islamicportal.com / editor123
                         </p>
                     </div>
                 </div>

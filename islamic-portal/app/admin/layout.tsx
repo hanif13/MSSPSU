@@ -3,12 +3,9 @@
 // Layout สำหรับหน้า Admin (ไม่แสดง Navbar/Footer หลัก)
 // ============================================
 
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-    title: "Admin Dashboard - Islamic Portal",
-    description: "ระบบจัดการเนื้อหา Islamic Portal",
-};
+import { AuthGuard } from "@/components/admin/AuthGuard";
 
 export default function AdminLayout({
     children,
@@ -16,8 +13,10 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="admin-layout">
-            {children}
-        </div>
+        <AuthGuard>
+            <div className="admin-layout">
+                {children}
+            </div>
+        </AuthGuard>
     );
 }

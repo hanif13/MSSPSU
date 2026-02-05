@@ -1,27 +1,72 @@
 // ============================================
 // app/salam-islam/page.tsx
-// หน้ารายการบทความสวัสดีอิสลาม พร้อมรูปปก
+// หน้ารายการบทความสวัสดีอิสลาม - ดึงข้อมูลจาก API จริง
 // ============================================
 
 "use client";
 
 import Link from "next/link";
 import { ArrowRight, Calendar } from "lucide-react";
-import { salamArticles } from "@/lib/mockData";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-// Get unique categories from salam articles
-const categories = ["ทั้งหมด", ...Array.from(new Set(salamArticles.map(a => a.category)))];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+interface SalamArticle {
+    _id: string;
+    title: string;
+    excerpt: string;
+    content: string;
+    category: string;
+    author: string;
+    slug: string;
+    icon?: string;
+    publishedAt?: string;
+    coverImage?: string;
+}
 
 export default function SalamIslamPage() {
+    const [articles, setArticles] = useState<SalamArticle[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState("ทั้งหมด");
+
+    useEffect(() => {
+        async function fetchArticles() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/salam-articles/published`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setArticles(data);
+                }
+            } catch (error) {
+                console.error('Error fetching salam articles:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchArticles();
+    }, []);
+
+    const categories = useMemo(() => {
+        return ["ทั้งหมด", ...Array.from(new Set(articles.map(a => a.category)))];
+    }, [articles]);
 
     const filteredArticles = useMemo(() => {
         if (selectedCategory === "ทั้งหมด") {
-            return salamArticles;
+            return articles;
         }
-        return salamArticles.filter(a => a.category === selectedCategory);
-    }, [selectedCategory]);
+        return articles.filter(a => a.category === selectedCategory);
+    }, [selectedCategory, articles]);
+
+    if (loading) {
+        return (
+            <div className="pt-24 pb-16 min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">กำลังโหลดบทความ...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="pt-24 pb-16">
@@ -61,10 +106,10 @@ export default function SalamIslamPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredArticles.map((article) => (
-                        <Link key={article.id} href={`/salam-islam/${article.slug}`}>
+                        <Link key={article._id} href={`/salam-islam/${article.slug}`}>
                             <article className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 h-full flex flex-col">
                                 {/* Cover Image */}
-                                <div className="h-48 relative overflow-hidden">
+                                <div className="aspect-square relative overflow-hidden">
                                     {article.coverImage ? (
                                         <img
                                             src={article.coverImage}
@@ -107,7 +152,6 @@ export default function SalamIslamPage() {
                     ))}
                 </div>
 
-                {/* No Results */}
                 {filteredArticles.length === 0 && (
                     <div className="text-center py-12">
                         <p className="text-gray-500">ไม่พบบทความในหมวดหมู่นี้</p>
