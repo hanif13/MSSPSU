@@ -70,8 +70,8 @@ __decorate([
 ], Video.prototype, "duration", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
-    (0, mongoose_1.Prop)(),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
 ], Video.prototype, "views", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),

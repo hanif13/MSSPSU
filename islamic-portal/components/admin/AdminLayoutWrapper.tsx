@@ -50,9 +50,14 @@ export function AdminLayoutWrapper({ children, title, description, icon }: Admin
         const role = localStorage.getItem("userRole");
 
         if (name) {
+            let roleLabel = "ผู้ใช้งาน";
+            if (role === "admin") roleLabel = "ผู้ดูแลระบบ";
+            else if (role === "editor") roleLabel = "บรรณาธิการ";
+            else if (role === "writer") roleLabel = "นักเขียน";
+
             setUserInfo({
                 name: name,
-                role: role === "admin" ? "ผู้ดูแลระบบ" : role === "editor" ? "บรรณาธิการ" : "ผู้ใช้งาน"
+                role: roleLabel
             });
         }
     }, []);

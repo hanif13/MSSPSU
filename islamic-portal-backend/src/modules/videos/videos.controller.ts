@@ -37,16 +37,16 @@ export class VideosController {
         return this.videosService.findPublished();
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get video by ID' })
-    findOne(@Param('id') id: string) {
-        return this.videosService.findOne(id);
-    }
-
     @Get('slug/:slug')
     @ApiOperation({ summary: 'Get video by slug' })
     findBySlug(@Param('slug') slug: string) {
         return this.videosService.findBySlug(slug);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get video by ID' })
+    findOne(@Param('id') id: string) {
+        return this.videosService.findOne(id);
     }
 
     @Put(':id')

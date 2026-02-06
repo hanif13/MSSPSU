@@ -31,11 +31,11 @@ let SalamArticlesController = class SalamArticlesController {
     findPublished() {
         return this.salamArticlesService.findPublished();
     }
-    findOne(id) {
-        return this.salamArticlesService.findOne(id);
-    }
     findBySlug(slug) {
         return this.salamArticlesService.findBySlug(slug);
+    }
+    findOne(id) {
+        return this.salamArticlesService.findOne(id);
     }
     update(id, updateDto) {
         return this.salamArticlesService.update(id, updateDto);
@@ -73,14 +73,6 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SalamArticlesController.prototype, "findPublished", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get salam article by ID' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], SalamArticlesController.prototype, "findOne", null);
-__decorate([
     (0, common_1.Get)('slug/:slug'),
     (0, swagger_1.ApiOperation)({ summary: 'Get salam article by slug' }),
     __param(0, (0, common_1.Param)('slug')),
@@ -88,6 +80,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], SalamArticlesController.prototype, "findBySlug", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get salam article by ID' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SalamArticlesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update salam article' }),

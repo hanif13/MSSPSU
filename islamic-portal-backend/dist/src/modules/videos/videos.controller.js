@@ -31,11 +31,11 @@ let VideosController = class VideosController {
     findPublished() {
         return this.videosService.findPublished();
     }
-    findOne(id) {
-        return this.videosService.findOne(id);
-    }
     findBySlug(slug) {
         return this.videosService.findBySlug(slug);
+    }
+    findOne(id) {
+        return this.videosService.findOne(id);
     }
     update(id, updateVideoDto) {
         return this.videosService.update(id, updateVideoDto);
@@ -73,14 +73,6 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], VideosController.prototype, "findPublished", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get video by ID' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], VideosController.prototype, "findOne", null);
-__decorate([
     (0, common_1.Get)('slug/:slug'),
     (0, swagger_1.ApiOperation)({ summary: 'Get video by slug' }),
     __param(0, (0, common_1.Param)('slug')),
@@ -88,6 +80,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], VideosController.prototype, "findBySlug", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get video by ID' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], VideosController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update video' }),

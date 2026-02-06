@@ -39,8 +39,8 @@ export class Video {
     duration: string;
 
     @ApiProperty()
-    @Prop()
-    views: string;
+    @Prop({ default: 0 })
+    views: number;
 
     @ApiProperty()
     @Prop()

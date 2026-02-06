@@ -37,8 +37,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "password", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ enum: ['admin', 'editor', 'user'] }),
-    (0, class_validator_1.IsEnum)(['admin', 'editor', 'user']),
+    (0, swagger_1.ApiPropertyOptional)({ enum: ['admin', 'editor', 'writer'] }),
+    (0, class_validator_1.IsEnum)(['admin', 'editor', 'writer']),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "role", void 0);
@@ -77,8 +77,8 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "password", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ enum: ['admin', 'editor', 'user'] }),
-    (0, class_validator_1.IsEnum)(['admin', 'editor', 'user']),
+    (0, swagger_1.ApiPropertyOptional)({ enum: ['admin', 'editor', 'writer'] }),
+    (0, class_validator_1.IsEnum)(['admin', 'editor', 'writer']),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "role", void 0);

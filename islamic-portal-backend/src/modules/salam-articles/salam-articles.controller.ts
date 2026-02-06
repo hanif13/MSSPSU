@@ -37,16 +37,16 @@ export class SalamArticlesController {
         return this.salamArticlesService.findPublished();
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get salam article by ID' })
-    findOne(@Param('id') id: string) {
-        return this.salamArticlesService.findOne(id);
-    }
-
     @Get('slug/:slug')
     @ApiOperation({ summary: 'Get salam article by slug' })
     findBySlug(@Param('slug') slug: string) {
         return this.salamArticlesService.findBySlug(slug);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get salam article by ID' })
+    findOne(@Param('id') id: string) {
+        return this.salamArticlesService.findOne(id);
     }
 
     @Put(':id')

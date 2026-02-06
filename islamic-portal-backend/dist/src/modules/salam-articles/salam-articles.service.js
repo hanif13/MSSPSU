@@ -59,11 +59,12 @@ let SalamArticlesService = class SalamArticlesService {
         return article;
     }
     async findBySlug(slug) {
-        const article = await this.salamArticleModel.findOne({ slug }).exec();
+        const article = await this.salamArticleModel
+            .findOneAndUpdate({ slug }, { $inc: { views: 1 } }, { new: true })
+            .exec();
         if (!article) {
             throw new common_1.NotFoundException(`SalamArticle with slug "${slug}" not found`);
         }
-        await this.salamArticleModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return article;
     }
     async update(id, updateDto) {

@@ -54,12 +54,16 @@ export class SalamArticlesService {
     }
 
     async findBySlug(slug: string): Promise<SalamArticle> {
-        const article = await this.salamArticleModel.findOne({ slug }).exec();
+        const article = await this.salamArticleModel
+            .findOneAndUpdate(
+                { slug },
+                { $inc: { views: 1 } },
+                { new: true }
+            )
+            .exec();
         if (!article) {
             throw new NotFoundException(`SalamArticle with slug "${slug}" not found`);
         }
-        // Increment views
-        await this.salamArticleModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return article;
     }
 

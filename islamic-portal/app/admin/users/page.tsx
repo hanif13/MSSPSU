@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { Modal, ConfirmModal } from "@/components/admin/Modal";
-import { Plus, Edit, Trash2, User as UserIcon, Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, User as UserIcon, Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -25,6 +25,7 @@ interface User {
 const roleOptions = [
     { value: "admin", label: "ผู้ดูแลระบบ" },
     { value: "editor", label: "บรรณาธิการ" },
+    { value: "writer", label: "นักเขียน" },
 ];
 
 export default function UsersPage() {
@@ -41,16 +42,24 @@ export default function UsersPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const [currentUserRole, setCurrentUserRole] = useState("");
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        role: "user",
+        role: "",
         isActive: true,
         password: "",
+        confirmPassword: "",
     });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Fetch users from API
     useEffect(() => {
+        const role = localStorage.getItem("userRole");
+        if (role) setCurrentUserRole(role);
         fetchUsers();
     }, []);
 
@@ -86,6 +95,7 @@ export default function UsersPage() {
         const roleConfig: Record<string, { bg: string; text: string; label: string }> = {
             admin: { bg: "bg-red-100", text: "text-red-700", label: "ผู้ดูแลระบบ" },
             editor: { bg: "bg-blue-100", text: "text-blue-700", label: "บรรณาธิการ" },
+            writer: { bg: "bg-green-100", text: "text-green-700", label: "นักเขียน" },
             user: { bg: "bg-gray-100", text: "text-gray-700", label: "ผู้ใช้ทั่วไป" },
         };
         const config = roleConfig[role] || roleConfig.user;
@@ -108,6 +118,13 @@ export default function UsersPage() {
     const handleAdd = async () => {
         try {
             setIsSubmitting(true);
+
+            if (formData.password !== formData.confirmPassword) {
+                alert("รหัสผ่านไม่ตรงกัน");
+                setIsSubmitting(false);
+                return;
+            }
+
             const res = await fetch(`${API_BASE_URL}/users/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -147,6 +164,7 @@ export default function UsersPage() {
                     email: formData.email,
                     role: formData.role,
                     isActive: formData.isActive,
+                    ...(formData.password ? { password: formData.password } : {}),
                 }),
             });
 
@@ -216,12 +234,16 @@ export default function UsersPage() {
             role: user.role,
             isActive: user.isActive,
             password: "",
+            confirmPassword: "",
         });
+        setShowPassword(false);
         setIsEditModalOpen(true);
     };
 
     const resetForm = () => {
-        setFormData({ name: "", email: "", role: "user", isActive: true, password: "" });
+        setFormData({ name: "", email: "", role: "", isActive: true, password: "", confirmPassword: "" });
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     };
 
     const activeCount = users.filter(u => u.isActive).length;
@@ -270,16 +292,18 @@ export default function UsersPage() {
                     <p className="text-2xl font-bold text-red-600">{adminCount}</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 shadow-sm flex items-center">
-                    <button
-                        onClick={() => {
-                            resetForm();
-                            setIsAddModalOpen(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition w-full justify-center"
-                    >
-                        <Plus size={20} />
-                        เพิ่มผู้ใช้ใหม่
-                    </button>
+                    {currentUserRole === "admin" && (
+                        <button
+                            onClick={() => {
+                                resetForm();
+                                setIsAddModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition w-full justify-center"
+                        >
+                            <Plus size={20} />
+                            เพิ่มผู้ใช้ใหม่
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -326,7 +350,9 @@ export default function UsersPage() {
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">บทบาท</th>
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">สถานะ</th>
                                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">วันที่สร้าง</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">จัดการ</th>
+                                {currentUserRole === "admin" && (
+                                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">จัดการ</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -366,27 +392,30 @@ export default function UsersPage() {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{formatDate(user.createdAt)}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                onClick={() => openEditModal(user)}
-                                                className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                                                title="แก้ไข"
-                                            >
-                                                <Edit size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedUser(user);
-                                                    setIsDeleteModalOpen(true);
-                                                }}
-                                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                                title="ลบ"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
+
+                                    {currentUserRole === "admin" && (
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openEditModal(user)}
+                                                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                                                    title="แก้ไข"
+                                                >
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedUser(user);
+                                                        setIsDeleteModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                    title="ลบ"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -432,13 +461,42 @@ export default function UsersPage() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน *</label>
-                        <input
-                            type="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="กรอกรหัสผ่าน"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
+                                placeholder="กรอกรหัสผ่าน"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ยืนยันรหัสผ่าน *</label>
+                        <div className="relative">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                value={formData.confirmPassword}
+                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
+                                placeholder="กรอกรหัสผ่านอีกครั้ง"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
 
                     <div>
@@ -448,6 +506,7 @@ export default function UsersPage() {
                             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                         >
+                            <option value="">เลือกบทบาท</option>
                             {roleOptions.map((role) => (
                                 <option key={role.value} value={role.value}>{role.label}</option>
                             ))}
@@ -463,7 +522,7 @@ export default function UsersPage() {
                         </button>
                         <button
                             onClick={handleAdd}
-                            disabled={!formData.name || !formData.email || !formData.password || isSubmitting}
+                            disabled={!formData.name || !formData.email || !formData.password || !formData.confirmPassword || !formData.role || isSubmitting}
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                         >
                             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
@@ -498,6 +557,26 @@ export default function UsersPage() {
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">เปลี่ยนรหัสผ่าน (ถ้ามี)</label>
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
+                                placeholder="กรอกรหัสผ่านใหม่"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

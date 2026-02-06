@@ -59,11 +59,12 @@ let ArticlesService = class ArticlesService {
         return article;
     }
     async findBySlug(slug) {
-        const article = await this.articleModel.findOne({ slug }).exec();
+        const article = await this.articleModel
+            .findOneAndUpdate({ slug }, { $inc: { views: 1 } }, { new: true })
+            .exec();
         if (!article) {
             throw new common_1.NotFoundException(`Article with slug "${slug}" not found`);
         }
-        await this.articleModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return article;
     }
     async update(id, updateArticleDto) {

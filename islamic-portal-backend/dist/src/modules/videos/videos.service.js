@@ -59,11 +59,12 @@ let VideosService = class VideosService {
         return video;
     }
     async findBySlug(slug) {
-        const video = await this.videoModel.findOne({ slug }).exec();
+        const video = await this.videoModel
+            .findOneAndUpdate({ slug }, { $inc: { views: 1 } }, { new: true })
+            .exec();
         if (!video) {
             throw new common_1.NotFoundException(`Video with slug "${slug}" not found`);
         }
-        await this.videoModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return video;
     }
     async update(id, updateVideoDto) {

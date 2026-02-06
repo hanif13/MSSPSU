@@ -73,11 +73,42 @@ export function AdminDashboard() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/stats/dashboard`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStatsData(data);
-                }
+                // Fetch all content types directly
+                const [articlesRes, videosRes, journalsRes, salamRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/articles`),
+                    fetch(`${API_BASE_URL}/videos`),
+                    fetch(`${API_BASE_URL}/journals`),
+                    fetch(`${API_BASE_URL}/salam-articles`),
+                ]);
+
+                const [articles, videos, journals, salam] = await Promise.all([
+                    articlesRes.ok ? articlesRes.json() : [],
+                    videosRes.ok ? videosRes.json() : [],
+                    journalsRes.ok ? journalsRes.json() : [],
+                    salamRes.ok ? salamRes.json() : [],
+                ]);
+
+                // Calculate stats
+                const totalContent = articles.length + videos.length + journals.length + salam.length;
+                const pendingCount = [
+                    ...articles.filter((a: any) => a.status === 'pending'),
+                    ...videos.filter((v: any) => v.status === 'pending'),
+                    ...journals.filter((j: any) => j.status === 'pending'),
+                    ...salam.filter((s: any) => s.status === 'pending'),
+                ].length;
+
+                setStatsData({
+                    totalContent,
+                    counts: {
+                        articles: articles.length,
+                        videos: videos.length,
+                        journals: journals.length,
+                        salam: salam.length,
+                    },
+                    pending: {
+                        total: pendingCount,
+                    },
+                });
             } catch (err) {
                 console.error("Error fetching stats:", err);
             } finally {
@@ -95,28 +126,34 @@ export function AdminDashboard() {
 
     const stats = [
         {
-            title: "บทความทั้งหมด",
+            title: "ทั้งหมด (4)",
+            value: statsData?.totalContent ?? 0,
+            icon: <Activity className="text-white" size={24} />,
+            color: "bg-gray-600"
+        },
+        {
+            title: "บทความ (1)",
             value: statsData?.counts?.articles ?? 0,
             icon: <FileText className="text-white" size={24} />,
             color: "bg-blue-500"
         },
         {
-            title: "เนื้อหาทั้งหมด",
-            value: statsData?.totalContent ?? 0,
-            icon: <Activity className="text-white" size={24} />,
+            title: "วิดีโอ (1)",
+            value: statsData?.counts?.videos ?? 0,
+            icon: <BookOpen className="text-white" size={24} />,
+            color: "bg-purple-500"
+        },
+        {
+            title: "วารสาร (1)",
+            value: statsData?.counts?.journals ?? 0,
+            icon: <BookOpen className="text-white" size={24} />,
             color: "bg-green-500"
         },
         {
-            title: "รอการอนุมัติ",
-            value: statsData?.pending?.total ?? 0,
-            icon: <CheckCircle className="text-white" size={24} />,
+            title: "สวัสดีอิสลาม (1)",
+            value: statsData?.counts?.salam ?? 0,
+            icon: <BookOpen className="text-white" size={24} />,
             color: "bg-orange-500"
-        },
-        {
-            title: "ผู้ใช้งาน",
-            value: statsData?.counts?.users ?? 0,
-            icon: <Users className="text-white" size={24} />,
-            color: "bg-purple-500"
         },
     ];
 
@@ -209,7 +246,7 @@ export function AdminDashboard() {
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
                         {stats.map((stat, index) => (
                             <StatCard key={index} {...stat} loading={loading} />
                         ))}

@@ -17,10 +17,22 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const category_schema_1 = require("./category.schema");
+const article_schema_1 = require("../articles/article.schema");
+const video_schema_1 = require("../videos/video.schema");
+const journal_schema_1 = require("../journals/journal.schema");
+const salam_article_schema_1 = require("../salam-articles/salam-article.schema");
 let CategoriesService = class CategoriesService {
     categoryModel;
-    constructor(categoryModel) {
+    articleModel;
+    videoModel;
+    journalModel;
+    salamArticleModel;
+    constructor(categoryModel, articleModel, videoModel, journalModel, salamArticleModel) {
         this.categoryModel = categoryModel;
+        this.articleModel = articleModel;
+        this.videoModel = videoModel;
+        this.journalModel = journalModel;
+        this.salamArticleModel = salamArticleModel;
     }
     async create(createCategoryDto) {
         const category = new this.categoryModel(createCategoryDto);
@@ -28,7 +40,26 @@ let CategoriesService = class CategoriesService {
     }
     async findAll(type) {
         const query = type ? { type, isActive: true } : { isActive: true };
-        return this.categoryModel.find(query).sort({ name: 1 }).exec();
+        const categories = await this.categoryModel.find(query).sort({ name: 1 }).lean().exec();
+        const results = await Promise.all(categories.map(async (cat) => {
+            let contentCount = 0;
+            switch (cat.type) {
+                case 'article':
+                    contentCount = await this.articleModel.countDocuments({ category: cat.name });
+                    break;
+                case 'video':
+                    contentCount = await this.videoModel.countDocuments({ category: cat.name });
+                    break;
+                case 'journal':
+                    contentCount = await this.journalModel.countDocuments({ category: cat.name });
+                    break;
+                case 'salam':
+                    contentCount = await this.salamArticleModel.countDocuments({ category: cat.name });
+                    break;
+            }
+            return { ...cat, contentCount };
+        }));
+        return results;
     }
     async findOne(id) {
         const category = await this.categoryModel.findById(id).exec();
@@ -64,6 +95,14 @@ exports.CategoriesService = CategoriesService;
 exports.CategoriesService = CategoriesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(category_schema_1.Category.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __param(1, (0, mongoose_1.InjectModel)(article_schema_1.Article.name)),
+    __param(2, (0, mongoose_1.InjectModel)(video_schema_1.Video.name)),
+    __param(3, (0, mongoose_1.InjectModel)(journal_schema_1.Journal.name)),
+    __param(4, (0, mongoose_1.InjectModel)(salam_article_schema_1.SalamArticle.name)),
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model])
 ], CategoriesService);
 //# sourceMappingURL=categories.service.js.map

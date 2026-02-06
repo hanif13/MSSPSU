@@ -54,12 +54,16 @@ export class JournalsService {
     }
 
     async findBySlug(slug: string): Promise<Journal> {
-        const journal = await this.journalModel.findOne({ slug }).exec();
+        const journal = await this.journalModel
+            .findOneAndUpdate(
+                { slug },
+                { $inc: { views: 1 } },
+                { new: true }
+            )
+            .exec();
         if (!journal) {
             throw new NotFoundException(`Journal with slug "${slug}" not found`);
         }
-        // Increment views
-        await this.journalModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return journal;
     }
 

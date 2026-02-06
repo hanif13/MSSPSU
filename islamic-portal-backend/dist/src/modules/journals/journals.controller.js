@@ -31,11 +31,11 @@ let JournalsController = class JournalsController {
     findPublished() {
         return this.journalsService.findPublished();
     }
-    findOne(id) {
-        return this.journalsService.findOne(id);
-    }
     findBySlug(slug) {
         return this.journalsService.findBySlug(slug);
+    }
+    findOne(id) {
+        return this.journalsService.findOne(id);
     }
     update(id, updateJournalDto) {
         return this.journalsService.update(id, updateJournalDto);
@@ -73,14 +73,6 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], JournalsController.prototype, "findPublished", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get journal by ID' }),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], JournalsController.prototype, "findOne", null);
-__decorate([
     (0, common_1.Get)('slug/:slug'),
     (0, swagger_1.ApiOperation)({ summary: 'Get journal by slug' }),
     __param(0, (0, common_1.Param)('slug')),
@@ -88,6 +80,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], JournalsController.prototype, "findBySlug", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get journal by ID' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], JournalsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update journal' }),

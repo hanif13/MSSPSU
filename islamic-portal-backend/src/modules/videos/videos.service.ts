@@ -54,12 +54,16 @@ export class VideosService {
     }
 
     async findBySlug(slug: string): Promise<Video> {
-        const video = await this.videoModel.findOne({ slug }).exec();
+        const video = await this.videoModel
+            .findOneAndUpdate(
+                { slug },
+                { $inc: { views: 1 } },
+                { new: true }
+            )
+            .exec();
         if (!video) {
             throw new NotFoundException(`Video with slug "${slug}" not found`);
         }
-        // Increment views
-        await this.videoModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return video;
     }
 

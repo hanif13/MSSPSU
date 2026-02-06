@@ -47,8 +47,11 @@ export default function ApprovalsPage() {
     const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [currentUserRole, setCurrentUserRole] = useState("");
 
     useEffect(() => {
+        const role = localStorage.getItem("userRole");
+        if (role) setCurrentUserRole(role);
         fetchAllPending();
     }, []);
 
@@ -249,7 +252,7 @@ export default function ApprovalsPage() {
                             </div>
 
                             <div className="flex gap-2">
-                                {item.status === "pending" && (
+                                {item.status === "pending" && currentUserRole !== "writer" && (
                                     <>
                                         <button
                                             onClick={() => {

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { ConfirmModal } from "@/components/admin/Modal";
@@ -27,77 +27,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Mock data for pending content
-const pendingContentData = [
-    {
-        id: "1",
-        title: "หลักการศรัทธา 6 ประการ",
-        type: "article",
-        category: "อากีดะห์",
-        author: "อ.ดร. อับดุลเลาะ สาเมาะ",
-        submittedDate: "28 ม.ค. 2567",
-        status: "pending",
-        excerpt: "บทความอธิบายหลักการศรัทธา 6 ประการในอิสลามอย่างละเอียด พร้อมหลักฐานจากอัลกุรอานและซุนนะห์",
-        content: `
-      <h2>หลักการศรัทธา 6 ประการ</h2>
-      <p>หลักการศรัทธา (อัรกานุลอีมาน) เป็นรากฐานสำคัญของศาสนาอิสลาม ประกอบด้วย 6 ประการ ดังนี้:</p>
-      
-      <h3>1. ศรัทธาต่ออัลลอฮ์</h3>
-      <p>การศรัทธาว่าอัลลอฮ์คือพระเจ้าองค์เดียว ไม่มีพระเจ้าอื่นใดนอกจากพระองค์ พระองค์เป็นผู้สร้าง ผู้ประทานปัจจัยยังชีพ และผู้จัดการกิจการทั้งปวง</p>
-      
-      <h3>2. ศรัทธาต่อมลาอิกะฮ์ (เทวทูต)</h3>
-      <p>การศรัทธาว่ามลาอิกะฮ์เป็นสิ่งถูกสร้างจากนูร (รัศมี) โดยอัลลอฮ์ สร้างมาเพื่อปฏิบัติภารกิจต่างๆ ตามที่อัลลอฮ์มอบหมาย</p>
-      
-      <h3>3. ศรัทธาต่อคัมภีร์</h3>
-      <p>การศรัทธาว่าอัลลอฮ์ได้ประทานคัมภีร์แก่บรรดาศาสนทูต และคัมภีร์อัลกุรอานเป็นคัมภีร์สุดท้ายที่สมบูรณ์ที่สุด</p>
-      
-      <h3>4. ศรัทธาต่อบรรดาศาสนทูต</h3>
-      <p>การศรัทธาว่าอัลลอฮ์ได้ส่งศาสนทูตมายังมนุษยชาติ และท่านนบีมุฮัมมัด ﷺ เป็นศาสนทูตคนสุดท้าย</p>
-      
-      <h3>5. ศรัทธาต่อวันอาคิเราะฮ์ (วันสิ้นโลก)</h3>
-      <p>การศรัทธาว่าจะมีวันที่มนุษย์ทุกคนจะถูกให้ฟื้นคืนชีพเพื่อรับการตัดสิน</p>
-      
-      <h3>6. ศรัทธาต่อกอดัรและกอดออ์</h3>
-      <p>การศรัทธาว่าทุกสิ่งที่เกิดขึ้นเป็นไปตามพระประสงค์และการกำหนดของอัลลอฮ์</p>
-      
-      <blockquote>
-        "ผู้ศรัทธา คือผู้ที่ศรัทธาต่ออัลลอฮ์ และเราะซูลของพระองค์ และไม่มีความสงสัยใดๆ" - อัลกุรอาน
-      </blockquote>
-    `,
-        coverImage: "https://images.unsplash.com/photo-1585036156171-384164a8c675?w=800",
-    },
-    {
-        id: "2",
-        title: "บรรยายพิเศษ: มารยาทในอิสลาม",
-        type: "video",
-        category: "บรรยายพิเศษ",
-        author: "อ.ซอลิห์ ยูโซะ",
-        submittedDate: "25 ม.ค. 2567",
-        status: "pending",
-        youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        excerpt: "วิดีโอบรรยายเรื่องมารยาทในอิสลามและการปฏิบัติตนในชีวิตประจำวัน",
-        content: "บรรยายเกี่ยวกับมารยาทในอิสลาม ครอบคลุมเรื่องการทักทาย การรับประทานอาหาร และการปฏิสัมพันธ์กับผู้อื่น",
-        coverImage: "https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=800",
-    },
-    {
-        id: "3",
-        title: "อิสลามศึกษากับการพัฒนาสังคม",
-        type: "journal",
-        category: "ฉบับที่ 15",
-        author: "รศ.ดร. มุฮัมมัด อาลี",
-        submittedDate: "20 ม.ค. 2567",
-        status: "pending",
-        excerpt: "บทความวิชาการว่าด้วยบทบาทของอิสลามศึกษาในการพัฒนาสังคมมุสลิมในประเทศไทย",
-        content: `
-      <h2>บทคัดย่อ</h2>
-      <p>บทความนี้มุ่งศึกษาบทบาทของอิสลามศึกษาในการพัฒนาสังคมมุสลิมในประเทศไทย โดยใช้ระเบียบวิธีวิจัยเชิงคุณภาพ...</p>
-      
-      <h2>บทนำ</h2>
-      <p>อิสลามศึกษาเป็นศาสตร์ที่มีความสำคัญต่อชุมชนมุสลิม...</p>
-    `,
-        coverImage: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800",
-    },
-];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+const endpointMap: Record<string, string> = {
+    article: "articles",
+    video: "videos",
+    journal: "journals",
+    salam: "salam-articles",
+};
 
 // Get content type icon
 const getTypeIcon = (type: string) => {
@@ -122,7 +59,7 @@ const getTypeLabel = (type: string) => {
 
 // Extract YouTube video ID
 const getYoutubeVideoId = (url: string) => {
-    const match = url?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|\/sandalsResorts#\w\/\w\/.*\/))([^\/&\?]{10,12})/);
+    const match = url?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=|\/sandalsResorts#\w\/\w\/.*\/))([^\/\&\?]{10,12})/);
     return match ? match[1] : null;
 };
 
@@ -131,30 +68,105 @@ export default function ApprovalReviewPage({ params }: { params: Promise<{ id: s
     const resolvedParams = use(params);
     const contentId = resolvedParams.id;
 
-    // Find content by ID
-    const content = pendingContentData.find((c) => c.id === contentId);
-
+    const [content, setContent] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        async function fetchContent() {
+            try {
+                setLoading(true);
+                // Try to fetch from all endpoints
+                const types = ['article', 'video', 'journal', 'salam'];
+                let found = false;
+
+                for (const type of types) {
+                    const endpoint = endpointMap[type];
+                    const res = await fetch(`${API_BASE_URL}/${endpoint}/${contentId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setContent({ ...data, type });
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    setError("ไม่พบเนื้อหาที่ต้องการตรวจสอบ");
+                }
+            } catch (err) {
+                console.error("Error fetching content:", err);
+                setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchContent();
+    }, [contentId]);
 
     // Handle Approve
-    const handleApprove = () => {
-        console.log("Approved content:", contentId);
-        router.push("/admin/approvals");
+    const handleApprove = async () => {
+        if (!content) return;
+        setSubmitting(true);
+        try {
+            const endpoint = endpointMap[content.type];
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/${contentId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'published' }),
+            });
+
+            if (res.ok) {
+                router.push("/admin/approvals");
+            }
+        } catch (err) {
+            console.error("Error approving content:", err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     // Handle Reject
-    const handleReject = () => {
-        console.log("Rejected content:", contentId, "Reason:", rejectReason);
-        router.push("/admin/approvals");
+    const handleReject = async () => {
+        if (!content) return;
+        setSubmitting(true);
+        try {
+            const endpoint = endpointMap[content.type];
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/${contentId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'rejected' }),
+            });
+
+            if (res.ok) {
+                router.push("/admin/approvals");
+            }
+        } catch (err) {
+            console.error("Error rejecting content:", err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (!content) {
+    if (loading) {
+        return (
+            <AdminLayoutWrapper title="กำลังโหลด..." description="กำลังโหลดข้อมูลเนื้อหา">
+                <div className="flex justify-center items-center py-20">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            </AdminLayoutWrapper>
+        );
+    }
+
+    if (error || !content) {
         return (
             <AdminLayoutWrapper title="ไม่พบเนื้อหา" description="ไม่พบข้อมูลเนื้อหาที่ต้องการตรวจสอบ">
                 <div className="text-center py-12">
-                    <p className="text-gray-500 mb-4">ไม่พบเนื้อหาที่ต้องการตรวจสอบ</p>
+                    <p className="text-gray-500 mb-4">{error || "ไม่พบเนื้อหาที่ต้องการตรวจสอบ"}</p>
                     <Link href="/admin/approvals" className="text-blue-600 hover:underline">
                         กลับไปหน้าอนุมัติ
                     </Link>
@@ -211,7 +223,11 @@ export default function ApprovalReviewPage({ params }: { params: Promise<{ id: s
                             </div>
                             <div className="flex items-center gap-2">
                                 <Calendar size={16} />
-                                <span>{content.submittedDate}</span>
+                                <span>{new Date(content.createdAt || content.publishedAt || Date.now()).toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                })}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Tag size={16} />

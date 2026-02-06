@@ -102,9 +102,9 @@ export default function ContentManagementPage() {
             // Add type property to each item for identification
             const unifiedContent: ContentItem[] = [
                 ...articles.map((item: any) => ({ ...item, type: 'article' })),
-                ...videos.map((item: any) => ({ ...item, type: 'video', views: parseInt(item.views) || 0 })),
-                ...journals.map((item: any) => ({ ...item, type: 'journal', views: 0 })),
-                ...salam.map((item: any) => ({ ...item, type: 'salam', views: 0 })),
+                ...videos.map((item: any) => ({ ...item, type: 'video' })),
+                ...journals.map((item: any) => ({ ...item, type: 'journal' })),
+                ...salam.map((item: any) => ({ ...item, type: 'salam' })),
             ];
 
             // Sort by createdAt descending
@@ -353,8 +353,8 @@ export default function ContentManagementPage() {
                         href="/admin/content/new"
                         className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                     >
-                        <Plus size={20} />
-                        <span className="hidden sm:inline">เพิ่มเนื้อหา</span>
+                        <Plus size={20} className="text-white" />
+                        <span className="hidden sm:inline text-white">เพิ่มเนื้อหา</span>
                     </Link>
                 </div>
             </div>

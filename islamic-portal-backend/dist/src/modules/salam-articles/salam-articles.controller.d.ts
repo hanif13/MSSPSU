@@ -6,8 +6,8 @@ export declare class SalamArticlesController {
     create(createDto: CreateSalamArticleDto): Promise<import("./salam-article.schema").SalamArticle>;
     findAll(status?: string): Promise<import("./salam-article.schema").SalamArticle[]>;
     findPublished(): Promise<import("./salam-article.schema").SalamArticle[]>;
-    findOne(id: string): Promise<import("./salam-article.schema").SalamArticle>;
     findBySlug(slug: string): Promise<import("./salam-article.schema").SalamArticle>;
+    findOne(id: string): Promise<import("./salam-article.schema").SalamArticle>;
     update(id: string, updateDto: UpdateSalamArticleDto): Promise<import("./salam-article.schema").SalamArticle>;
     updateStatus(id: string, status: string): Promise<import("./salam-article.schema").SalamArticle>;
     remove(id: string): Promise<void>;

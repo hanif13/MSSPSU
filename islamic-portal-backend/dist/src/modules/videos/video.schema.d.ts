@@ -9,7 +9,7 @@ export declare class Video {
     authorTitle: string;
     slug: string;
     duration: string;
-    views: string;
+    views: number;
     publishedAt: string;
     youtubeUrl: string;
     coverImage: string;
@@ -106,7 +106,7 @@ export declare const VideoSchema: import("mongoose").Schema<Video, import("mongo
     }, "id"> & {
         id: string;
     }> | undefined;
-    views?: import("mongoose").SchemaDefinitionProperty<string, Video, Document<unknown, {}, Video, {
+    views?: import("mongoose").SchemaDefinitionProperty<number, Video, Document<unknown, {}, Video, {
         id: string;
     }, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & Omit<Video & {
         _id: import("mongoose").Types.ObjectId;

@@ -37,16 +37,16 @@ export class ArticlesController {
         return this.articlesService.findPublished();
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get article by ID' })
-    findOne(@Param('id') id: string) {
-        return this.articlesService.findOne(id);
-    }
-
     @Get('slug/:slug')
     @ApiOperation({ summary: 'Get article by slug' })
     findBySlug(@Param('slug') slug: string) {
         return this.articlesService.findBySlug(slug);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get article by ID' })
+    findOne(@Param('id') id: string) {
+        return this.articlesService.findOne(id);
     }
 
     @Put(':id')

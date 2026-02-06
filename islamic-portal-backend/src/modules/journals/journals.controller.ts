@@ -37,16 +37,16 @@ export class JournalsController {
         return this.journalsService.findPublished();
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get journal by ID' })
-    findOne(@Param('id') id: string) {
-        return this.journalsService.findOne(id);
-    }
-
     @Get('slug/:slug')
     @ApiOperation({ summary: 'Get journal by slug' })
     findBySlug(@Param('slug') slug: string) {
         return this.journalsService.findBySlug(slug);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get journal by ID' })
+    findOne(@Param('id') id: string) {
+        return this.journalsService.findOne(id);
     }
 
     @Put(':id')

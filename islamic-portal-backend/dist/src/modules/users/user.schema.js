@@ -38,7 +38,7 @@ __decorate([
 ], User.prototype, "password", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
-    (0, mongoose_1.Prop)({ default: 'user', enum: ['admin', 'editor', 'user'] }),
+    (0, mongoose_1.Prop)({ default: 'writer', enum: ['admin', 'editor', 'writer'] }),
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
 __decorate([

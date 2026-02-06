@@ -15,8 +15,8 @@ export class CreateUserDto {
     @MinLength(6)
     password: string;
 
-    @ApiPropertyOptional({ enum: ['admin', 'editor', 'user'] })
-    @IsEnum(['admin', 'editor', 'user'])
+    @ApiPropertyOptional({ enum: ['admin', 'editor', 'writer'] })
+    @IsEnum(['admin', 'editor', 'writer'])
     @IsOptional()
     role?: string;
 
@@ -43,8 +43,8 @@ export class UpdateUserDto {
     @IsOptional()
     password?: string;
 
-    @ApiPropertyOptional({ enum: ['admin', 'editor', 'user'] })
-    @IsEnum(['admin', 'editor', 'user'])
+    @ApiPropertyOptional({ enum: ['admin', 'editor', 'writer'] })
+    @IsEnum(['admin', 'editor', 'writer'])
     @IsOptional()
     role?: string;
 

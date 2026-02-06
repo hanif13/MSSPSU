@@ -5,7 +5,8 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Clock, Eye, Calendar, Share2 } from "lucide-react";
+import { ArrowLeft, User, Clock, Eye, Calendar } from "lucide-react";
+import ShareButton from "@/components/ShareButton";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -134,10 +135,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12">
                     {/* Share Button */}
                     <div className="flex gap-3 mb-8">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-gray-600 hover:bg-gray-200 transition">
-                            <Share2 size={18} />
-                            แชร์
-                        </button>
+                        <ShareButton title={article.title} />
                     </div>
 
                     {/* Article Content */}

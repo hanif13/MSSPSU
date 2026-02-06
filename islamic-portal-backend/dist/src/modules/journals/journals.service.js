@@ -59,11 +59,12 @@ let JournalsService = class JournalsService {
         return journal;
     }
     async findBySlug(slug) {
-        const journal = await this.journalModel.findOne({ slug }).exec();
+        const journal = await this.journalModel
+            .findOneAndUpdate({ slug }, { $inc: { views: 1 } }, { new: true })
+            .exec();
         if (!journal) {
             throw new common_1.NotFoundException(`Journal with slug "${slug}" not found`);
         }
-        await this.journalModel.findOneAndUpdate({ slug }, { $inc: { views: 1 } });
         return journal;
     }
     async update(id, updateJournalDto) {

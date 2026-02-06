@@ -19,7 +19,7 @@ export class User {
     password: string;
 
     @ApiProperty()
-    @Prop({ default: 'user', enum: ['admin', 'editor', 'user'] })
+    @Prop({ default: 'writer', enum: ['admin', 'editor', 'writer'] })
     role: string;
 
     @ApiProperty()
