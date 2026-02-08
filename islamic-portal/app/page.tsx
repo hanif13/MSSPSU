@@ -6,7 +6,9 @@
 import { HeroSection } from "@/components/content/HeroSection";
 import { ContentSection } from "@/components/content/ContentSection";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = (typeof window === 'undefined' && process.env.INTERNAL_API_URL)
+  ? process.env.INTERNAL_API_URL
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api');
 
 // Fetch data from API
 async function getHomePageData() {
