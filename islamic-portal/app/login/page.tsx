@@ -182,15 +182,6 @@ export default function LoginPage() {
                     </form>
 
                     {/* Demo Note */}
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <p className="text-sm text-blue-700 font-medium mb-2">ข้อมูลสำหรับทดสอบ:</p>
-                        <p className="text-xs text-blue-600 mb-1">
-                            <strong>Admin:</strong> admin@islamicportal.com / admin123
-                        </p>
-                        <p className="text-xs text-blue-600">
-                            <strong>Editor:</strong> editor@islamicportal.com / editor123
-                        </p>
-                    </div>
                 </div>
 
                 {/* Footer */}
