@@ -4,7 +4,7 @@ import { AdminLayoutWrapper } from "@/components/admin/AdminLayoutWrapper";
 import { Activity, Search, Filter, User, FileText, CheckCircle, XCircle, Edit, Trash2, LogIn, LogOut, Loader2, Video, BookOpen, Heart } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface AuditLog {
     _id: string;

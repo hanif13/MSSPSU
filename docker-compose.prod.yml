@@ -106,7 +106,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Client side now talks to domain (Nginx handles routing)
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://islamic-portal.msspsuhatyai.org/api}
     container_name: islamic-portal-frontend
     restart: unless-stopped
     environment:
